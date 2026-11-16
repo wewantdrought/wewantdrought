@@ -1,7 +1,7 @@
 # Project 001 — Personal Portfolio Website
 ## Foundational Project Charter
 
-**Status:** Foundational guidelines  
+**Status:** Foundational guidelines · guided collaboration rules updated 2026-11-16  
 **Project:** 001 of approximately 10–15 planned software projects  
 **Purpose:** Engineering education, professional identity, creative expression, and product development
 
@@ -43,7 +43,7 @@ The preferred decision-making process is:
 8. Implement and verify the solution.
 9. Review and understand the resulting system.
 
-Not every trivial change requires this full process. Routine, reversible, clearly specified tasks should proceed without unnecessary bureaucracy.
+The guided collaboration protocol in Section 13 governs all work. Routine details may be handled within an explicitly approved, bounded step; reversibility alone is not permission to start implementation.
 
 **Guiding principle:** Technical complexity must always be justified by an actual requirement.
 
@@ -157,7 +157,7 @@ Technical decisions should be evaluated according to:
 
 Meaningful architectural choices should be documented, including the alternatives considered and the reasons for selection.
 
-**Current status:** The technology stack, application architecture, hosting approach, and supporting tools remain undecided.
+**Current status:** React, TypeScript, Vite, Three.js through React Three Fiber, CSS, and GSAP with ScrollTrigger have been accepted as the proposed stack. Lenis is optional and has not been selected. Acceptance of these tools does not authorize implementation steps. Detailed architecture and hosting remain subject to discussion and scoped approval.
 
 ## 7. MVP Scoping and Release Strategy
 
@@ -264,7 +264,7 @@ AI should identify these patterns constructively without becoming an obstacle to
 
 ## 12. Non-Negotiable Rules for Coding Agents
 
-The following rules form the conceptual foundation for a future `AGENTS.md` file:
+These rules are reinforced by the root `AGENTS.md` and the mandatory protocol in Section 13:
 
 1. The user owns product direction and major architectural decisions.
 2. Do not introduce major technologies, dependencies, or structural changes without appropriate approval.
@@ -277,7 +277,53 @@ The following rules form the conceptual foundation for a future `AGENTS.md` file
 9. Report important implementation decisions, assumptions, limitations, and unresolved issues.
 10. Do not conceal errors, bypass failing checks, or claim unverified completion.
 11. Support the user's understanding rather than replacing their engineering judgment.
-12. Apply these rules pragmatically: straightforward, reversible tasks should not require unnecessary approval.
+12. Apply Section 13 to every action. Handle routine details only within the scope already explained and explicitly delegated; do not use convenience, reversibility, or shipping speed to bypass a checkpoint.
+
+---
+
+## 13. Mandatory Guided Collaboration Protocol
+
+**Default mode: explain, work with Rain, verify together, then stop at the checkpoint.**
+
+This section overrides broad autonomy language and routine-task exceptions elsewhere in this charter. It applies to source code, configuration, dependencies, generated assets, documents, commands, temporary drafts, and external services. Learning and informed participation are part of delivery, not an optional explanation after the work is done.
+
+### Before acting
+
+1. **State the purpose and scope.** Explain what the next action will do and why it is needed. For read-only inspection, name what will be inspected and why; do not silently expand into mutations.
+2. **Explain before implementation.** Before changing code or configuration, installing dependencies, generating implementation assets, or running a setup/build/server command, describe the concrete proposed step, affected files, relevant concepts, visible outcome, and verification. Explain commands before either Rain or the agent executes them.
+3. **Allocate the work explicitly.** Identify what Rain will do, what the agent proposes to do, and what will be reviewed together. Start with one manageable hands-on action for Rain. Do not take over that action unless Rain explicitly delegates it.
+4. **Obtain specific approval for the bounded step.** Agreement with a tool, design direction, or overall proposal is not permission to build the website. During discussion, phrases such as “looks good,” “makes sense,” or “let’s move on” mean continue the discussion unless the user clearly authorizes the described implementation step. If ambiguous, ask one concise question before acting.
+5. **Respect explicit requests.** A direct request to edit a particular document authorizes that explained document edit; it does not authorize application changes. A direct, specific delegation can authorize a larger batch when its scope and consequences have been explained. Avoid asking repeatedly for permission already given for the same step.
+
+### During an approved step
+
+6. **Stay inside the boundary.** Do not implement later milestones, introduce new dependencies, decide unreviewed product behavior, or add speculative features. Temporary folders, background commands, and generated drafts are subject to the same rules as the master repository. “Only a prototype” is not an exemption.
+7. **Make reasoning visible.** Explain meaningful choices in plain language, define technical terms when introduced, and connect each change to a requirement. Clearly distinguish approved decisions, recommendations, assumptions, and placeholders. Do not overwhelm Rain with unrelated concepts or quiz him as a condition of progress.
+8. **No invisible continuation.** Tell Rain when starting an installation, server, long-running command, or external operation. Report its state; do not leave it running across a stop/handoff without disclosure. If asked to stop, stop initiating work and cancel owned active work where safely possible, then explain the exact state.
+9. **Keep changes reviewable.** Prefer a small, working increment. Show or summarize the actual diff and give Rain a chance to inspect the relevant code and behavior before proceeding. Do not present a completed large implementation as a substitute for participation.
+
+### At the checkpoint
+
+10. **Verify honestly.** State what was checked, the result, and what remains unverified. Distinguish written code, installed dependencies, a successful build, browser-tested behavior, a commit, and a deployment. Never imply one establishes the others.
+11. **Close the learning loop.** Explain what changed, how it fits into the system, what Rain did, and one concrete thing Rain should inspect or try. Pause for his observation or question before beginning the next milestone.
+12. **Keep release actions separate.** Do not commit, push, publish, deploy, change hosting, delete drafts, or revert work without explicit authorization for that action. Preparing local source does not authorize a release. Preserve existing work until Rain chooses how to retain, revise, or remove it.
+13. **Carry the rules forward.** Read root `AGENTS.md` and this charter at the start of project work, including after a context handoff. These rules apply to every contributing agent. Record new decisions with their approval scope; never treat earlier general approval as blanket permission.
+
+### Required step proposal
+
+Before implementation, provide these five items in language appropriate to the task:
+
+- Goal and the reason for this step
+- Files and commands involved, with their purpose
+- Rain's hands-on action and the agent's proposed action
+- Expected result and how to check it
+- Exact point at which the agent will stop
+
+### Current checkpoint — 2026-11-16
+
+Implementation is paused. An initial scaffold exists in the master repository, and dependencies and a lockfile are present. The entry file imports application and stylesheet files that are missing, so this is not a working preview. Additional unverified implementation drafts exist in `/tmp/wewantdrought-release`; they are not accepted implementation and must not be integrated automatically. Nothing has been committed or published by this work.
+
+The next activity is a guided explanation and read-only walkthrough of the scaffold. Rain will choose whether to retain, revise, or remove it before implementation resumes. The request to strengthen these guidelines authorizes the charter and root `AGENTS.md` documentation edits only.
 
 ---
 
@@ -293,16 +339,18 @@ The following rules form the conceptual foundation for a future `AGENTS.md` file
 - Codex assists with scoped implementation.
 - The first release should be practical, polished, and deployable.
 - Future enhancements should be managed separately from the active release.
-- A concise agent instruction file should complement, not replace, this charter.
+- Root `AGENTS.md` makes the mandatory guided collaboration protocol discoverable to coding agents.
+- Proposed stack accepted: React + TypeScript + Vite + CSS + Three.js through React Three Fiber + GSAP/ScrollTrigger. Tool acceptance is separate from implementation authorization.
+- First-release direction: ASCII vinyl hero and philosophy/cube journey, ending before the CD player. Placeholder phrases are permitted; exact copy and composition remain reviewable.
+- Implementation is paused at the Section 13 checkpoint; future work proceeds with Rain in explicitly approved steps.
 
 ### Not yet decided
 
-- Technology stack and frameworks
 - Application and repository architecture
 - Visual identity and design system
 - Exact MVP features and content
 - Hosting and deployment strategy
-- Animation and graphics technologies
+- Exact rendering implementation and scroll choreography
 - Testing frameworks
 - Project integrations
 - Development milestones and release date
@@ -316,3 +364,36 @@ These decisions should emerge through deliberate technical and product discussio
 **The goal is not merely to create an exceptional personal website. The goal is to become a more capable, independent software engineer by designing, implementing, understanding, and shipping one.**
 
 The website is both the first finished product and the beginning of a long-term engineering portfolio.
+
+---
+
+## Read before changes — non-negotiable
+
+For this first project, Rain must read every proposed line of agent-authored code before it is added or changed. This includes boilerplate, configuration, scripts, shaders, tests, and implementation drafts. Proposed documentation changes must also be shown before they are applied.
+
+Before modifying files, the agent must:
+
+1. Show the exact proposed additions, replacements, or deletions, identifying their destination files. A summary or description is not a substitute for the actual content.
+2. Explain what the content does, why it is needed, and any unfamiliar concepts. Keep proposals small enough for Rain to read and discuss.
+3. Wait for Rain to confirm that he has read the proposal and explicitly authorize applying it.
+4. Apply only the reviewed content. If a correction or additional change becomes necessary, show that change and obtain approval before applying it.
+
+These requirements also apply to temporary folders and prototypes. Do not write implementation elsewhere to bypass review.
+
+Explain every command before execution, including its purpose, effects, and expected output. Before commands generate or modify files, disclose those outputs and agree on their review scope. Do not silently classify generated content as exempt.
+
+There is no standing permission to write boilerplate. Any future exception must be explicitly granted by Rain with a defined scope.
+
+By project completion, Rain must have read all agent-authored project code and had the opportunity to understand every line. Maintain a brief review record identifying what has been reviewed and any explanations still outstanding. Do not infer understanding from silence or claim understanding on Rain’s behalf.
+
+Existing unreviewed scaffold and temporary drafts are not accepted implementation. Review them with Rain before retaining, integrating, revising, or removing them.
+
+## Explicit phase transitions
+
+Clearly distinguish planning, implementation, verification, and release.
+
+Before transitioning from planning to implementation, state: “Planning for [bounded milestone] is complete. I propose beginning implementation of [specific scope].” Identify Rain’s work, the agent’s proposed work, the review criteria, and the stopping point. Wait for explicit approval.
+
+Approval of a phase transition does not waive line-by-line review before changes. If implementation raises a new design or architectural decision, announce a return to planning for that decision.
+
+At each checkpoint, state the current phase, completed work, unresolved questions, and next proposed action. Never silently move from discussion into implementation.

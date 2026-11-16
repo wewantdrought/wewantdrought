@@ -1,10 +1,9 @@
 # Project guidance
 
-A home for this website's instructions, big ideas, rules, and evolving decisions.
+- [Project charter](project-charter-draft.md): active project principles and mandatory collaboration rules, including review before changes and explicit phase transitions.
+- [Design philosophy](design-philosophy.md): aesthetic references, visual direction, and open design decisions.
+- [Agent instructions](../AGENTS.md): operational rules that coding agents must follow.
 
-- [Design philosophy](design-philosophy.md): current aesthetic direction and open design questions.
-- [Project charter draft](project-charter-draft.md): the original consolidated charter recovered from the “Project Charter Draft” chat, preserved as a historical draft.
+The charter retains its original filename but is an actively maintained governing document, not merely a historical draft.
 
-The design brief records later refinements: personal creative expression leads, Santal is the strongest aesthetic anchor, five site sections are agreed, and no final palette is selected. Read older charter statements in that context.
-
-Keep future specifications and decision notes here. A concise repository-level AGENTS.md can be added when operational conventions are agreed; the charter is broader project context.
+Current checkpoint: application implementation is paused. Rain must review the existing scaffold before deciding whether to retain, revise, or remove it. Temporary implementation drafts are unaccepted and must not be integrated automatically.
