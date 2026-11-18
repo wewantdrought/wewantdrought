@@ -26,7 +26,7 @@ function NortheastArrow() {
       aria-hidden="true"
       focusable="false"
     >
-      <path d="M1 1h14M15 1v14M5.1 10.9 15 1" />
+      <path d="M0 0h16M16 0v16M0 16 16 0" />
     </svg>
   );
 }

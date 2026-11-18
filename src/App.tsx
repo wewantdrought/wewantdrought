@@ -9,7 +9,8 @@ const sections = [
   { label: 'Contact', position: 1120 },
 ];
 
-const boundaries = [286, 609, 713, 979, 1120, 1375];
+const homeSectionGuide = 286;
+const boundaries = [homeSectionGuide, 609, 713, 979, 1120, 1375];
 
 export default function App() {
   return (
@@ -34,7 +35,12 @@ export default function App() {
         {boundaries.map((position) => (
           <span
             key={position}
-            style={{ left: `${(position / 1440) * 100}%` }}
+            style={{
+              left:
+                position === homeSectionGuide
+                  ? 'var(--hero-home-guide-x)'
+                  : `${(position / 1440) * 100}%`,
+            }}
           />
         ))}
       </div>
