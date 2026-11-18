@@ -1,3 +1,4 @@
+import AboutBlock from './AboutBlock';
 import VinylScene from './VinylScene';
 
 const sections = [
@@ -47,8 +48,6 @@ export default function App() {
         aria-hidden="true"
       />
 
-      <VinylScene />
-
       <div className="hero-progress">
         <ul className="hero-sections" aria-label="Website sections">
           {sections.map(({ label, position }) => (
@@ -64,31 +63,12 @@ export default function App() {
         <div className="hero-track" aria-hidden="true">
           <span className="hero-position" />
         </div>
-
-        <span className="hero-plus hero-plus-left" aria-hidden="true" />
-        <span className="hero-plus hero-plus-right" aria-hidden="true" />
       </div>
 
-      <div className="hero-margin-notes">
-        <p>05 / 18 / 2007</p>
-        <p>CS @WesternU</p>
-      </div>
+      <AboutBlock />
+      <VinylScene />
 
-      <div className="hero-eyebrows">
-        <p>DESIGN + SOFTWARE + MUSIC</p>
-        <p>Vancouver, CA / 2026</p>
-      </div>
-
-      <footer className="hero-footer">
-        <p className="hero-introduction">
-          INTRODUCTION — COPY TO BE APPROVED
-        </p>
-        <p className="hero-pending-left">PENDING</p>
-        <p className="hero-pending-right">PENDING</p>
-      </footer>
-
-      <span className="hero-corner hero-corner-left" aria-hidden="true" />
-      <span className="hero-corner hero-corner-right" aria-hidden="true" />
+      <p className="hero-location">Vancouver, CA / 2026</p>
     </main>
   );
 }
