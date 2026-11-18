@@ -1,5 +1,5 @@
-import { Canvas, useFrame } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 const grooveVertexShader = `
@@ -39,16 +39,50 @@ const reflectionFragmentShader = `
   }
 `;
 
+type PressTarget = {
+  x: number;
+  y: number;
+  pointerId: number | null;
+} | null;
+
+type PressPose = {
+  depth: number;
+  tiltX: number;
+  tiltY: number;
+};
+
+const restingPressPose: PressPose = {
+  depth: 0,
+  tiltX: 0,
+  tiltY: 0,
+};
+
+const maximumPressDepth = 0.075;
+const maximumPressTilt = THREE.MathUtils.degToRad(2.5);
+const springStiffness = 280;
+const springDamping = 28;
+
 type VinylMotionProps = {
   motionEnabled: boolean;
   reducedMotion: boolean;
+  pressTarget: PressTarget;
+  pressTargetChange: (target: PressTarget) => void;
 };
 
-function Vinyl({ motionEnabled, reducedMotion }: VinylMotionProps) {
+function Vinyl({
+  motionEnabled,
+  reducedMotion,
+  pressTarget,
+  pressTargetChange,
+}: VinylMotionProps) {
   const driftGroup = useRef<THREE.Group>(null);
+  const interactionGroup = useRef<THREE.Group>(null);
   const spinGroup = useRef<THREE.Group>(null);
   const elapsedSeconds = useRef(0);
   const lastFrameTime = useRef<number | null>(null);
+  const currentPressPose = useRef<PressPose>({ ...restingPressPose });
+  const pressVelocity = useRef<PressPose>({ ...restingPressPose });
+  const targetPressPose = useRef<PressPose>({ ...restingPressPose });
 
   const recordShape = useMemo(() => {
     const shape = new THREE.Shape();
@@ -70,11 +104,36 @@ function Vinyl({ motionEnabled, reducedMotion }: VinylMotionProps) {
   const presentationTilt = THREE.MathUtils.degToRad(-58);
   const diagonal = THREE.MathUtils.degToRad(12);
 
+  const handlePointerDown = useCallback(
+    (event: ThreeEvent<PointerEvent>) => {
+      event.stopPropagation();
+
+      if (!interactionGroup.current) {
+        return;
+      }
+
+      const localPoint = interactionGroup.current.worldToLocal(
+        event.point.clone(),
+      );
+      const distance = Math.hypot(localPoint.x, localPoint.y);
+      const divisor = Math.max(1, distance);
+
+      pressTargetChange({
+        x: localPoint.x / divisor,
+        y: localPoint.y / divisor,
+        pointerId: event.pointerId,
+      });
+    },
+    [pressTargetChange],
+  );
+
   useEffect(() => {
     lastFrameTime.current = null;
 
     if (reducedMotion) {
       elapsedSeconds.current = 0;
+      currentPressPose.current = { ...targetPressPose.current };
+      pressVelocity.current = { ...restingPressPose };
 
       if (spinGroup.current) {
         spinGroup.current.rotation.z = 0;
@@ -86,33 +145,75 @@ function Vinyl({ motionEnabled, reducedMotion }: VinylMotionProps) {
     }
   }, [motionEnabled, reducedMotion]);
 
-  useFrame((state) => {
-    if (!motionEnabled) {
-      return;
+  useEffect(() => {
+    if (pressTarget) {
+      targetPressPose.current.depth = maximumPressDepth;
+      targetPressPose.current.tiltX =
+        -pressTarget.y * maximumPressTilt;
+      targetPressPose.current.tiltY =
+        pressTarget.x * maximumPressTilt;
+    } else {
+      targetPressPose.current = { ...restingPressPose };
+    }
+  }, [pressTarget]);
+
+  useFrame((state, delta) => {
+    let springDelta = 0;
+
+    if (motionEnabled) {
+      const now = performance.now();
+
+      if (lastFrameTime.current === null) {
+        lastFrameTime.current = now;
+      } else {
+        elapsedSeconds.current +=
+          (now - lastFrameTime.current) / 1000;
+        lastFrameTime.current = now;
+        springDelta = Math.min(delta, 0.05);
+      }
+
+      const spinPhase = (elapsedSeconds.current % 24) / 24;
+      const driftPhase = (elapsedSeconds.current % 4.5) / 4.5;
+      const driftAmplitude =
+        (5 * state.viewport.height) / state.size.height;
+
+      if (spinGroup.current) {
+        spinGroup.current.rotation.z =
+          -spinPhase * Math.PI * 2;
+      }
+
+      if (driftGroup.current) {
+        driftGroup.current.position.y =
+          Math.sin(driftPhase * Math.PI * 2) * driftAmplitude;
+      }
     }
 
-    const now = performance.now();
+    if (reducedMotion) {
+      currentPressPose.current = { ...targetPressPose.current };
+      pressVelocity.current = { ...restingPressPose };
+    } else if (motionEnabled && springDelta > 0) {
+      for (const key of ['depth', 'tiltX', 'tiltY'] as const) {
+        const current = currentPressPose.current[key];
+        const velocity = pressVelocity.current[key];
+        const target = targetPressPose.current[key];
+        const acceleration =
+          springStiffness * (target - current) -
+          springDamping * velocity;
+        const nextVelocity = velocity + acceleration * springDelta;
 
-    if (lastFrameTime.current === null) {
-      lastFrameTime.current = now;
-      return;
+        pressVelocity.current[key] = nextVelocity;
+        currentPressPose.current[key] =
+          current + nextVelocity * springDelta;
+      }
     }
 
-    elapsedSeconds.current += (now - lastFrameTime.current) / 1000;
-    lastFrameTime.current = now;
-
-    const spinPhase = (elapsedSeconds.current % 24) / 24;
-    const driftPhase = (elapsedSeconds.current % 4.5) / 4.5;
-    const driftAmplitude =
-      (5 * state.viewport.height) / state.size.height;
-
-    if (spinGroup.current) {
-      spinGroup.current.rotation.z = -spinPhase * Math.PI * 2;
-    }
-
-    if (driftGroup.current) {
-      driftGroup.current.position.y =
-        Math.sin(driftPhase * Math.PI * 2) * driftAmplitude;
+    if (interactionGroup.current) {
+      interactionGroup.current.position.z =
+        -currentPressPose.current.depth;
+      interactionGroup.current.rotation.x =
+        currentPressPose.current.tiltX;
+      interactionGroup.current.rotation.y =
+        currentPressPose.current.tiltY;
     }
   });
 
@@ -120,44 +221,49 @@ function Vinyl({ motionEnabled, reducedMotion }: VinylMotionProps) {
     <group ref={driftGroup}>
       <group rotation={[0, 0, diagonal]}>
         <group rotation={[presentationTilt, 0, 0]}>
-          <group ref={spinGroup}>
-            <mesh>
-              <extrudeGeometry
-                args={[
-                  recordShape,
-                  {
-                    depth: recordDepth,
-                    bevelEnabled: true,
-                    bevelThickness,
-                    bevelSize: 0.008,
-                    bevelSegments: 2,
-                    curveSegments: 96,
-                  },
-                ]}
-              />
-              <meshPhysicalMaterial
-                color="#101010"
-                roughness={0.72}
-                metalness={0.08}
-              />
-            </mesh>
+          <group
+            ref={interactionGroup}
+            onPointerDown={handlePointerDown}
+          >
+            <group ref={spinGroup}>
+              <mesh>
+                <extrudeGeometry
+                  args={[
+                    recordShape,
+                    {
+                      depth: recordDepth,
+                      bevelEnabled: true,
+                      bevelThickness,
+                      bevelSize: 0.008,
+                      bevelSegments: 2,
+                      curveSegments: 96,
+                    },
+                  ]}
+                />
+                <meshPhysicalMaterial
+                  color="#101010"
+                  roughness={0.72}
+                  metalness={0.08}
+                />
+              </mesh>
 
-            <mesh position={[0, 0, faceZ]}>
-              <ringGeometry args={[0.075, 0.985, 128]} />
-              <shaderMaterial
-                vertexShader={grooveVertexShader}
-                fragmentShader={grooveFragmentShader}
-              />
-            </mesh>
+              <mesh position={[0, 0, faceZ]}>
+                <ringGeometry args={[0.075, 0.985, 128]} />
+                <shaderMaterial
+                  vertexShader={grooveVertexShader}
+                  fragmentShader={grooveFragmentShader}
+                />
+              </mesh>
 
-            <mesh position={[0, 0, labelZ]}>
-              <ringGeometry args={[0.055, 0.23, 96]} />
-              <meshPhysicalMaterial
-                color="#f4f4f4"
-                roughness={0.82}
-                metalness={0}
-              />
-            </mesh>
+              <mesh position={[0, 0, labelZ]}>
+                <ringGeometry args={[0.055, 0.23, 96]} />
+                <meshPhysicalMaterial
+                  color="#f4f4f4"
+                  roughness={0.82}
+                  metalness={0}
+                />
+              </mesh>
+            </group>
           </group>
 
           <mesh position={[0, 0, reflectionZ]}>
@@ -180,9 +286,39 @@ export default function VinylScene() {
   const [isInViewport, setIsInViewport] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [pressTarget, setPressTarget] = useState<PressTarget>(null);
 
   const motionEnabled =
     isInViewport && isPageVisible && !prefersReducedMotion;
+
+  const releasePress = useCallback(() => {
+    setPressTarget(null);
+  }, []);
+
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key !== ' ' && event.key !== 'Enter') {
+        return;
+      }
+
+      event.preventDefault();
+
+      if (!event.repeat) {
+        setPressTarget({ x: 0, y: 0, pointerId: null });
+      }
+    },
+    [],
+  );
+
+  const handleKeyUp = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (event.key === ' ' || event.key === 'Enter') {
+        event.preventDefault();
+        releasePress();
+      }
+    },
+    [releasePress],
+  );
 
   useEffect(() => {
     const container = containerRef.current;
@@ -201,6 +337,20 @@ export default function VinylScene() {
 
     const onPageVisibilityChange = () => {
       setIsPageVisible(!document.hidden);
+
+      if (document.hidden) {
+        releasePress();
+      }
+    };
+
+    const releasePointerPress = (event: PointerEvent) => {
+      setPressTarget((current) =>
+        current?.pointerId === event.pointerId ? null : current,
+      );
+    };
+
+    const releaseOnBlur = () => {
+      releasePress();
     };
 
     const observer =
@@ -226,6 +376,9 @@ export default function VinylScene() {
       'visibilitychange',
       onPageVisibilityChange,
     );
+    window.addEventListener('pointerup', releasePointerPress);
+    window.addEventListener('pointercancel', releasePointerPress);
+    window.addEventListener('blur', releaseOnBlur);
 
     return () => {
       observer?.disconnect();
@@ -237,11 +390,17 @@ export default function VinylScene() {
         'visibilitychange',
         onPageVisibilityChange,
       );
+      window.removeEventListener('pointerup', releasePointerPress);
+      window.removeEventListener(
+        'pointercancel',
+        releasePointerPress,
+      );
+      window.removeEventListener('blur', releaseOnBlur);
     };
-  }, []);
+  }, [releasePress]);
 
   return (
-    <div ref={containerRef} className="hero-vinyl" aria-hidden="true">
+    <div ref={containerRef} className="hero-vinyl">
       <Canvas
         camera={{ position: [0, 0, 3.5], fov: 35 }}
         dpr={[1, 1.5]}
@@ -254,8 +413,19 @@ export default function VinylScene() {
         <Vinyl
           motionEnabled={motionEnabled}
           reducedMotion={prefersReducedMotion}
+          pressTarget={pressTarget}
+          pressTargetChange={setPressTarget}
         />
       </Canvas>
+
+      <button
+        className="vinyl-keyboard-control"
+        type="button"
+        aria-label="Press the vinyl"
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onBlur={releasePress}
+      />
     </div>
   );
 }
