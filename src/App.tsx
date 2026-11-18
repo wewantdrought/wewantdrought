@@ -1,3 +1,5 @@
+import VinylScene from './VinylScene';
+
 const sections = [
   { label: 'Home', position: 84 },
   { label: 'Things I’ve Made', position: 286 },
@@ -44,6 +46,8 @@ export default function App() {
         alt=""
         aria-hidden="true"
       />
+
+      <VinylScene />
 
       <div className="hero-progress">
         <ul className="hero-sections" aria-label="Website sections">
