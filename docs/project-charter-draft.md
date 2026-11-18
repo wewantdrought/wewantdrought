@@ -59,6 +59,8 @@ ChatGPT's primary responsibilities are to act as:
 
 Codex may handle boilerplate, repetitive work, refactoring, test generation, documentation, debugging assistance, and implementation of approved designs.
 
+For substantial visual work, ChatGPT helps Rain develop and review the design in Figma; Codex implements the approved design in the application.
+
 AI must not silently determine major product requirements, introduce substantial dependencies, replace architectural decisions, or expand feature scope without appropriate justification.
 
 For substantial delegation, specifications should identify:
@@ -71,6 +73,18 @@ For substantial delegation, specifications should identify:
 - Verification procedures
 
 The amount of specification should remain proportional to the complexity and risk of the task.
+
+### Implementation ownership for substantial tasks
+
+For substantial implementation work, ChatGPT’s role is to help Rain understand and scope the work, resolve decisions, and prepare a detailed, copy-ready prompt for Codex. Codex is responsible for the repository code changes.
+
+A task is substantial when it introduces a feature or milestone, changes multiple parts of the application, requires architectural or dependency decisions, or involves significant UI, animation, graphics, testing, or setup work.
+
+For substantial tasks, ChatGPT must not implement the work in the repository, write a parallel implementation in a temporary location, or generate a prototype as a substitute for the Codex handoff. It should prepare a brief that describes the goals and reasons, expected behavior, constraints, approved decisions, relevant files and documentation, acceptance criteria, verification expectations, and unresolved questions. The brief should normally describe what the implementation must achieve rather than prescribe exact source code.
+
+Rain reviews and passes the brief to Codex. Codex inspects the repository, follows its instructions and review rules, implements only the approved scope, and provides a handoff report. ChatGPT may then help Rain understand and review that report, assess feedback, and prepare a follow-up prompt.
+
+For a small, focused change, ChatGPT may provide or implement the change only when Rain specifically asks it to. Rain may also explicitly authorize a different division of work for a particular task. No general preference or earlier approval grants standing permission to implement future tasks.
 
 AI-generated code is not automatically accepted code. Significant changes should be reviewed, understood, and tested.
 
@@ -136,6 +150,8 @@ All design proposals should consider:
 
 Novelty alone is not sufficient justification for additional complexity.
 
+Figma may be used to specify and review composition, typography, static assets, and interaction intent. Production responsiveness, accessibility, and runtime behavior must still be implemented and verified in the website.
+
 ## 6. Architecture and Code-Quality Standards
 
 The architecture should be appropriate to the website's actual requirements and current scale.
@@ -183,29 +199,38 @@ The website should not consume the entire three-month building initiative.
 
 ## 8. Development Workflow
 
-Work should proceed through an understandable and repeatable engineering process.
+Use this ChatGPT–Codex workflow for substantial features and changes. ChatGPT supports product thinking, technical learning, and planning; Codex inspects and changes the repository. Rain remains the engineer, product owner, and final decision-maker.
 
-**Discovery:** Define the problem, intended audience, requirements, and constraints.
+### Figma design and Codex implementation
 
-**Exploration:** Evaluate implementation alternatives and their tradeoffs.
+For substantial visual or interface work, ChatGPT uses the project context and Rain’s direction to help develop the design in Figma. Rain reviews and approves the design before it becomes the visual target for implementation. Codex is responsible for assembling the approved design in the application; it should not independently replace or reinterpret the visual direction.
 
-**Design:** Establish the user experience and technical approach before substantial implementation.
+A Codex handoff should identify the Figma file and relevant page, frame, or node; the approved layouts and screen sizes; any assets to use and their locations; and notes for interaction, motion, accessibility, and responsive behavior. The handoff should also link the project documents that govern scope and requirements.
 
-**Specification:** Define expected behavior, responsibilities, acceptance criteria, and verification steps.
+The approved Figma design is the visual reference for layout, typography, color, and static assets. Project documentation remains the reference for product scope and behavior, and the codebase records the implementation. If these sources conflict, or if Codex cannot access or understand the referenced Figma content, it must report the issue and ask Rain rather than silently guessing.
 
-**Implementation:** Write or delegate appropriately scoped code.
+Figma prototypes and motion studies communicate intent; they do not replace production behavior. Codex implements runtime behavior in the application. For example, the vinyl’s cursor-responsive ASCII lighting must change the rendered characters in the app; a static Figma image cannot satisfy that interaction.
 
-**Validation:** Test functionality, inspect behavior, review code, and resolve defects.
+Approval of a Figma design does not authorize code changes. Code implementation remains a separate, bounded step under Section 13. Changes to Figma are also bounded work and must be reviewed and approved before they are made.
 
-**Integration:** Confirm that new work fits the existing system and conventions.
+### Plan and implement
 
-**Release:** Deploy the verified implementation and document relevant decisions.
+1. **Scope (ChatGPT):** Define the problem, audience, desired behavior, visual direction, requirements, constraints, and success criteria with Rain.
+2. **Learn (ChatGPT):** Explore relevant technologies, viable approaches, and tradeoffs. Explain meaningful choices so Rain can make informed decisions.
+3. **Specify (ChatGPT → Codex):** Prepare a detailed, actionable implementation brief that points to relevant Markdown documentation and states approved choices, acceptance criteria, and verification expectations.
+4. **Implement (Codex):** Inspect the repository and its conventions, implement the approved scope, verify the changes as requested and appropriate, and prepare a structured handoff report.
 
-**Reflection:** Identify lessons learned, technical weaknesses, and future improvements.
+### Review and refine
 
-The workflow is a guide rather than a rigid ceremony. Low-risk changes may combine several stages.
+5. **Review (Rain):** Inspect and try the implementation. Note visual mismatches, broken or missing behavior, and anything that does not match the intended result.
+6. **Relay (Rain → ChatGPT):** Share observations and, when useful, screenshots together with Codex’s handoff report or relevant technical findings. The report should cover the objective, changes and file paths, important decisions, verification performed and not performed, known issues, and documentation updates.
+7. **Evaluate (ChatGPT):** Diagnose the feedback, distinguish defects from design or requirement disagreements, revisit decisions when needed, and prepare targeted correction instructions. Ask Rain for direction when a material product or architecture decision remains open.
+8. **Refine (Codex):** Make the targeted corrections, verify them, and report the outcome. Repeat review, relay, evaluation, and refinement as needed.
+9. **Accept and document (Rain with ChatGPT/Codex support):** Once Rain is satisfied, treat the change as accepted, update relevant specifications or decision records, and move on.
 
-For significant architectural decisions, user approval takes precedence over autonomous implementation.
+The three working references have distinct roles: **ChatGPT conversations express and develop product intent; repository Markdown files hold durable specifications and approved decisions; the repository implementation records what actually exists.** Keep them aligned. If implementation differs from an approved specification, report the difference and resolve it rather than silently treating either as the other.
+
+Minor, straightforward fixes with clear intent may go directly to Codex without the full workflow. Keep the process proportionate for other routine, reversible work too. Significant product, scope, dependency, stack, or architecture decisions remain with Rain; Codex implements an approved direction and should not silently expand it.
 
 ## 9. Testing and Definition of Done
 
@@ -289,6 +314,8 @@ This section overrides broad autonomy language and routine-task exceptions elsew
 
 ### Before acting
 
+When a task depends on a Figma design, the handoff must identify the approved file and relevant frames or nodes, assets, and behavior notes. If Codex cannot access or resolve the design, it must stop and ask Rain. Figma approval does not authorize code changes.
+
 1. **State the purpose and scope.** Explain what the next action will do and why it is needed. For read-only inspection, name what will be inspected and why; do not silently expand into mutations.
 2. **Explain before implementation.** Before changing code or configuration, installing dependencies, generating implementation assets, or running a setup/build/server command, describe the concrete proposed step, affected files, relevant concepts, visible outcome, and verification. Explain commands before either Rain or the agent executes them.
 3. **Allocate the work explicitly.** Identify what Rain will do, what the agent proposes to do, and what will be reviewed together. Start with one manageable hands-on action for Rain. Do not take over that action unless Rain explicitly delegates it.
@@ -318,13 +345,6 @@ Before implementation, provide these five items in language appropriate to the t
 - Rain's hands-on action and the agent's proposed action
 - Expected result and how to check it
 - Exact point at which the agent will stop
-
-### Current checkpoint — 2026-11-16
-
-Implementation is paused. An initial scaffold exists in the master repository, and dependencies and a lockfile are present. The entry file imports application and stylesheet files that are missing, so this is not a working preview. Additional unverified implementation drafts exist in `/tmp/wewantdrought-release`; they are not accepted implementation and must not be integrated automatically. Nothing has been committed or published by this work.
-
-The next activity is a guided explanation and read-only walkthrough of the scaffold. Rain will choose whether to retain, revise, or remove it before implementation resumes. The request to strengthen these guidelines authorizes the charter and root `AGENTS.md` documentation edits only.
-
 ---
 
 ## Decision Register
@@ -397,3 +417,17 @@ Before transitioning from planning to implementation, state: “Planning for [bo
 Approval of a phase transition does not waive line-by-line review before changes. If implementation raises a new design or architectural decision, announce a return to planning for that decision.
 
 At each checkpoint, state the current phase, completed work, unresolved questions, and next proposed action. Never silently move from discussion into implementation.
+
+EXTRAS, FOR RAINS REFERENCE
+
+To start a new spec session:
+
+I want to start the ChatGPT–Codex workflow for this feature:
+
+**Feature or goal:** (Describe what I want to do)
+
+First, read the project’s `AGENTS.md`, Section 13 of `docs/project-charter-draft.md`, and any relevant specifications. We are in the planning phase: help me scope the feature, identify requirements and constraints, and explain important technical options and tradeoffs in plain language. Ask focused questions when needed; don’t start implementation.
+
+Once we agree on the scope and direction, prepare a detailed, actionable implementation brief for Codex. Include the expected behavior, relevant files and documentation, approved decisions, acceptance criteria, verification expectations, and anything that remains open.
+
+Show me the complete brief to review. Don’t treat agreement with the plan as permission to edit files. I’ll review and approve the brief, then pass it to Codex for the bounded implementation step. Codex must follow the repository’s review rules and provide a handoff report when finished.

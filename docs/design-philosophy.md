@@ -10,6 +10,7 @@ Build a personal world that expresses Rain's taste and ability to create. The si
 - **[Porsche](https://shop.porsche.com/ca/en-CA)** informs precise typography, smooth interaction, thoughtful curves, and the integration of compelling product and car visuals.
 - **[Wealthsimple](https://www.wealthsimple.com/en-ca)** informs color relationships, atmosphere, and exceptionally tangible, premium objects.
 - **[Daniel Tan](https://danielrltan.com/)** remains an important reference for immersive personal character and confident visual identity. Its orange and bedroom scene are not selected requirements.
+- [[website-experience-specification]] Refer to doc for more information about how exactly I want the website to be like.
 
 ## Composition & typography
 Use a disciplined grid, fine rules, consistent alignment, and generous empty space. Contrast large, tightly composed display typography with restrained navigation and captions. Explore uppercase selectively. Santal's inspected headings use Helvetica; their impact depends on proportion and composition. Porsche Next is a reference for engineered character, not a selected project font.

@@ -15,9 +15,17 @@ Read `docs/project-charter-draft.md`, especially Section 13, before acting. Read
 - If Rain says stop, stop initiating work, cancel owned active work where safely possible, and explain the state accurately.
 - Re-read these rules after a handoff. If another agent contributes, pass along the same constraints.
 
+## Figma design handoff
+
+- For substantial visual work, follow the Figma-to-Codex workflow in Section 8 of `docs/project-charter-draft.md`: Rain and ChatGPT establish and review the design in Figma; Codex implements the approved design in the app.
+- In implementation prompts, include the Figma file URL and relevant page/frame/node references, plus approved assets and behavior notes. Do not assume Codex shares ChatGPT’s Figma context or can access a file without checking.
+- Treat approved Figma frames as the visual target and project documentation as the source for scope and behavior. If the design is inaccessible, unclear, or conflicts with project requirements, stop and ask Rain rather than inventing a resolution.
+- Implement runtime interactions in code when a static Figma design cannot provide them. Do not substitute a static mockup for required behavior.
+- Figma approval is not code approval. Follow the separate implementation and review requirements in Section 13.
+
 ## Current checkpoint
 
-Implementation is paused pending a guided walkthrough and Rain's decision about the existing scaffold. Unverified drafts in `/tmp/wewantdrought-release` must not be integrated automatically. The 2026-11-16 guidelines request authorizes documentation changes only.
+Implementation is active for the bounded scaffold-connection milestone. The guided, read-only walkthrough is complete, and the existing scaffold has been retained for this step. The app and stylesheet are minimal connection placeholders; the hero is a separate milestone and is not included. Unverified drafts in `/tmp/wewantdrought-release` remain unaccepted and must not be integrated automatically. No release actions are authorized.
 
 ---
 
@@ -51,3 +59,5 @@ Before transitioning from planning to implementation, state: “Planning for [bo
 Approval of a phase transition does not waive line-by-line review before changes. If implementation raises a new design or architectural decision, announce a return to planning for that decision.
 
 At each checkpoint, state the current phase, completed work, unresolved questions, and next proposed action. Never silently move from discussion into implementation.
+
+**ChatGPT handoff report:** After every implementation step, prepare the structured report defined in Section 8 (“Development Workflow”) of `docs/project-charter-draft.md`. Follow Section 13 (“Mandatory Guided Collaboration Protocol”) for checkpoint, review, and verification expectations. Make the report easy for Rain to share with ChatGPT alongside feedback, and distinguish verified facts from assumptions.
