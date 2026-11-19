@@ -1,14 +1,13 @@
 import {
   Canvas,
   useFrame,
-  useThree,
   type ThreeEvent,
 } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
-import AsciiVinylPass, {
-  type PointerLightState,
-} from './AsciiVinylPass';
+import AsciiVinylPass from './AsciiVinylPass';
+import type { PointerLightState } from './pointerLight';
 
 const grooveVertexShader = `
   varying vec3 localPosition;
@@ -75,7 +74,6 @@ type VinylMotionProps = {
   reducedMotion: boolean;
   pressTarget: PressTarget;
   pressTargetChange: (target: PressTarget) => void;
-  pointerLight: { current: PointerLightState };
 };
 
 function Vinyl({
@@ -83,9 +81,7 @@ function Vinyl({
   reducedMotion,
   pressTarget,
   pressTargetChange,
-  pointerLight,
 }: VinylMotionProps) {
-  const invalidate = useThree((state) => state.invalidate);
   const driftGroup = useRef<THREE.Group>(null);
   const interactionGroup = useRef<THREE.Group>(null);
   const spinGroup = useRef<THREE.Group>(null);
@@ -114,34 +110,6 @@ function Vinyl({
   const reflectionZ = faceZ + 0.002;
   const presentationTilt = THREE.MathUtils.degToRad(-58);
   const diagonal = THREE.MathUtils.degToRad(12);
-
-  const handlePointerMove = useCallback(
-    (event: ThreeEvent<PointerEvent>) => {
-      const supportsFineHover = window.matchMedia(
-        '(any-hover: hover) and (any-pointer: fine)',
-      ).matches;
-
-      if (
-        event.nativeEvent.pointerType === 'touch' ||
-        !supportsFineHover
-      ) {
-        pointerLight.current.active = false;
-        invalidate();
-        return;
-      }
-
-      pointerLight.current.x = event.pointer.x;
-      pointerLight.current.y = event.pointer.y;
-      pointerLight.current.active = true;
-      invalidate();
-    },
-    [invalidate, pointerLight],
-  );
-
-  const handlePointerOut = useCallback(() => {
-    pointerLight.current.active = false;
-    invalidate();
-  }, [invalidate, pointerLight]);
 
   const handlePointerDown = useCallback(
     (event: ThreeEvent<PointerEvent>) => {
@@ -263,8 +231,6 @@ function Vinyl({
           <group
             ref={interactionGroup}
             onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerOut={handlePointerOut}
           >
             <group ref={spinGroup}>
               <mesh>
@@ -322,22 +288,25 @@ function Vinyl({
   );
 }
 
-export default function VinylScene() {
+type VinylSceneProps = {
+  containerRef: MutableRefObject<HTMLDivElement | null>;
+  pointerLight: MutableRefObject<PointerLightState>;
+  prefersReducedMotion: boolean;
+};
+
+export default function VinylScene({
+  containerRef,
+  pointerLight,
+  prefersReducedMotion,
+}: VinylSceneProps) {
   const showNormalVinyl =
     import.meta.env.DEV &&
     new URLSearchParams(window.location.search).get('vinyl') ===
       'normal';
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const [isInViewport, setIsInViewport] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
-  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const [pressTarget, setPressTarget] = useState<PressTarget>(null);
-  const pointerLight = useRef<PointerLightState>({
-    x: 0,
-    y: 0,
-    active: false,
-  });
 
   const motionEnabled =
     isInViewport && isPageVisible && !prefersReducedMotion;
@@ -378,14 +347,6 @@ export default function VinylScene() {
       return;
     }
 
-    const motionQuery = window.matchMedia(
-      '(prefers-reduced-motion: reduce)',
-    );
-
-    const onMotionPreferenceChange = (event: MediaQueryListEvent) => {
-      setPrefersReducedMotion(event.matches);
-    };
-
     const onPageVisibilityChange = () => {
       setIsPageVisible(!document.hidden);
 
@@ -413,7 +374,6 @@ export default function VinylScene() {
             );
           });
 
-    setPrefersReducedMotion(motionQuery.matches);
     onPageVisibilityChange();
 
     if (observer) {
@@ -422,7 +382,6 @@ export default function VinylScene() {
       setIsInViewport(true);
     }
 
-    motionQuery.addEventListener('change', onMotionPreferenceChange);
     document.addEventListener(
       'visibilitychange',
       onPageVisibilityChange,
@@ -433,10 +392,6 @@ export default function VinylScene() {
 
     return () => {
       observer?.disconnect();
-      motionQuery.removeEventListener(
-        'change',
-        onMotionPreferenceChange,
-      );
       document.removeEventListener(
         'visibilitychange',
         onPageVisibilityChange,
@@ -466,13 +421,9 @@ export default function VinylScene() {
           reducedMotion={prefersReducedMotion}
           pressTarget={pressTarget}
           pressTargetChange={setPressTarget}
-          pointerLight={pointerLight}
         />
         {!showNormalVinyl && (
-          <AsciiVinylPass
-            pointerLight={pointerLight}
-            reducedMotion={prefersReducedMotion}
-          />
+          <AsciiVinylPass pointerLight={pointerLight} />
         )}
       </Canvas>
 

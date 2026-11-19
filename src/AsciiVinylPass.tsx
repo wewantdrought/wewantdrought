@@ -1,11 +1,14 @@
 import {
   useEffect,
   useMemo,
-  useRef,
   type MutableRefObject,
 } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import {
+  pointerLightSettings,
+  type PointerLightState,
+} from './pointerLight';
 
 const asciiSettings = {
   cellWidth: 6,
@@ -16,22 +19,8 @@ const asciiSettings = {
   glyphBrightness: 0.94,
 };
 
-export type PointerLightState = {
-  x: number;
-  y: number;
-  active: boolean;
-};
-
 type AsciiVinylPassProps = {
   pointerLight: MutableRefObject<PointerLightState>;
-  reducedMotion: boolean;
-};
-
-const pointerLightSettings = {
-  radiusWidthFraction: 0.16,
-  maximumStrength: 0.28,
-  smoothingSeconds: 0.1,
-  fadeOutSeconds: 0.2,
 };
 
 const vertexShader = `
@@ -165,7 +154,6 @@ function createGlyphAtlas() {
 
 export default function AsciiVinylPass({
   pointerLight,
-  reducedMotion,
 }: AsciiVinylPassProps) {
   const { gl, scene, camera, invalidate } = useThree();
 
@@ -262,9 +250,6 @@ export default function AsciiVinylPass({
     () => new THREE.Vector2(),
     [],
   );
-  const smoothedPointer = useMemo(() => new THREE.Vector2(), []);
-  const targetPointer = useMemo(() => new THREE.Vector2(), []);
-  const pointerStrength = useRef(0);
 
   useEffect(
     () => () => {
@@ -277,23 +262,16 @@ export default function AsciiVinylPass({
   );
 
   useEffect(() => {
-    const clearPointer = () => {
-      pointerLight.current.active = false;
-      invalidate();
-    };
-
-    gl.domElement.addEventListener('pointerleave', clearPointer);
-    window.addEventListener('blur', clearPointer);
-    document.addEventListener('visibilitychange', clearPointer);
+    pointerLight.current.invalidate = invalidate;
 
     return () => {
-      gl.domElement.removeEventListener('pointerleave', clearPointer);
-      window.removeEventListener('blur', clearPointer);
-      document.removeEventListener('visibilitychange', clearPointer);
+      if (pointerLight.current.invalidate === invalidate) {
+        pointerLight.current.invalidate = null;
+      }
     };
-  }, [gl, invalidate, pointerLight]);
+  }, [invalidate, pointerLight]);
 
-  useFrame((_, delta) => {
+  useFrame(() => {
     gl.getDrawingBufferSize(drawingBufferSize);
 
     const width = Math.max(1, Math.floor(drawingBufferSize.x));
@@ -311,33 +289,18 @@ export default function AsciiVinylPass({
     );
 
     const pointer = pointerLight.current;
-    targetPointer.set(
-      ((pointer.x + 1) * 0.5) * width,
-      ((pointer.y + 1) * 0.5) * height,
+    const canvasBounds = gl.domElement.getBoundingClientRect();
+    const canvasWidth = Math.max(canvasBounds.width, 1);
+    const canvasHeight = Math.max(canvasBounds.height, 1);
+
+    uniforms.uPointer.value.set(
+      ((pointer.clientX - canvasBounds.left) / canvasWidth) * width,
+      ((canvasBounds.bottom - pointer.clientY) / canvasHeight) * height,
     );
-
-    if (reducedMotion) {
-      smoothedPointer.copy(targetPointer);
-      pointerStrength.current = pointer.active ? 1 : 0;
-    } else if (pointer.active) {
-      const smoothing =
-        1 - Math.exp(-delta / pointerLightSettings.smoothingSeconds);
-
-      smoothedPointer.lerp(targetPointer, smoothing);
-      pointerStrength.current = 1;
-    } else {
-      pointerStrength.current = Math.max(
-        0,
-        pointerStrength.current -
-          delta / pointerLightSettings.fadeOutSeconds,
-      );
-    }
-
-    uniforms.uPointer.value.copy(smoothedPointer);
     uniforms.uLightRadius.value =
-      width * pointerLightSettings.radiusWidthFraction;
+      pointer.radius * (width / canvasWidth);
     uniforms.uLightStrength.value =
-      pointerStrength.current * pointerLightSettings.maximumStrength;
+      pointer.strength * pointerLightSettings.maximumVinylStrength;
 
     const previousTarget = gl.getRenderTarget();
 

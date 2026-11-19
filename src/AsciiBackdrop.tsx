@@ -1,4 +1,11 @@
+import type { RefObject } from 'react';
+
 type GlyphKind = 'square' | 'diagonal' | 'cross' | 'filled';
+
+type AsciiBackdropProps = {
+  lightGradientRef: RefObject<SVGRadialGradientElement | null>;
+  lightLayerRef: RefObject<SVGRectElement | null>;
+};
 
 const gridSize = 32;
 const cellSize = 13.5;
@@ -39,7 +46,10 @@ const backgroundCells = Array.from(
   },
 );
 
-export default function AsciiBackdrop() {
+export default function AsciiBackdrop({
+  lightGradientRef,
+  lightLayerRef,
+}: AsciiBackdropProps) {
   return (
     <svg
       className="hero-ascii-backdrop"
@@ -47,6 +57,44 @@ export default function AsciiBackdrop() {
       focusable="false"
     >
       <defs>
+        <filter
+          id="hero-ascii-light-brightness"
+          colorInterpolationFilters="sRGB"
+        >
+          <feComponentTransfer>
+            <feFuncR type="linear" slope="1.6" />
+            <feFuncG type="linear" slope="1.6" />
+            <feFuncB type="linear" slope="1.6" />
+          </feComponentTransfer>
+        </filter>
+
+        <radialGradient
+          ref={lightGradientRef}
+          id="hero-ascii-light-gradient"
+          gradientUnits="userSpaceOnUse"
+          cx="0"
+          cy="0"
+          r="0"
+        >
+          <stop offset="0" stopColor="white" />
+          <stop offset="1" stopColor="black" />
+        </radialGradient>
+
+        <mask
+          id="hero-ascii-light-mask"
+          maskUnits="userSpaceOnUse"
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+        >
+          <rect
+            width="100%"
+            height="100%"
+            fill="url(#hero-ascii-light-gradient)"
+          />
+        </mask>
+
         <pattern
           id="hero-ascii-pattern"
           width={patternSize}
@@ -118,6 +166,16 @@ export default function AsciiBackdrop() {
         width="100%"
         height="100%"
         fill="url(#hero-ascii-pattern)"
+        opacity="0.23"
+      />
+      <rect
+        ref={lightLayerRef}
+        width="100%"
+        height="100%"
+        fill="url(#hero-ascii-pattern)"
+        filter="url(#hero-ascii-light-brightness)"
+        mask="url(#hero-ascii-light-mask)"
+        opacity="0"
       />
     </svg>
   );
