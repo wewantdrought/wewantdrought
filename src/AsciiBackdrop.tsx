@@ -1,55 +1,67 @@
-import type { RefObject } from 'react';
+const cellSize = 11;
+const cellPitch = 15.5;
+const groupPitch = 80.5;
+const groupWidth = 73;
+const groupColumns = 8;
+const groupRows = 7;
+const patternWidth = groupColumns * groupPitch;
+const patternHeight = groupRows * groupPitch;
 
-type GlyphKind = 'square' | 'diagonal' | 'cross' | 'filled';
+const activeGroups = new Set([
+  '0,0',
+  '5,2',
+  '2,3',
+  '7,5',
+  '4,6',
+]);
 
-type AsciiBackdropProps = {
-  lightGradientRef: RefObject<SVGRadialGradientElement | null>;
-  lightLayerRef: RefObject<SVGRectElement | null>;
-};
+const groupCells = Array.from({ length: 25 }, (_, index) => ({
+  column: index % 5,
+  row: Math.floor(index / 5),
+}));
 
-const gridSize = 32;
-const cellSize = 13.5;
-const glyphScale = 0.75;
-const patternSize = gridSize * cellSize;
-
-const backgroundCells = Array.from(
-  { length: gridSize * gridSize },
-  (_, index) => {
-    const x = index % gridSize;
-    const y = Math.floor(index / gridSize);
-    const field =
-      Math.sin((x * 2 + y) * Math.PI / 16) +
-      0.6 * Math.cos((x - y * 2) * Math.PI / 16);
-    const wrappedX = x % gridSize;
-    const wrappedY = y % gridSize;
-    const seed =
-      (wrappedX * 73 +
-        wrappedY * 151 +
-        wrappedX * wrappedY * 37) %
-      577;
-
-    let kind: GlyphKind;
-
-    if (seed / 577 < 0.055) {
-      kind = 'filled';
-    } else if (field < -0.45) {
-      kind = 'square';
-    } else if (field < 0.15) {
-      kind = 'diagonal';
-    } else if (field < 1) {
-      kind = 'cross';
-    } else {
-      kind = 'square';
-    }
-
-    return { x, y, kind };
-  },
+const groupPlacements = Array.from(
+  { length: groupColumns * groupRows },
+  (_, index) => ({
+    column: index % groupColumns,
+    row: Math.floor(index / groupColumns),
+  }),
 );
 
-export default function AsciiBackdrop({
-  lightGradientRef,
-  lightLayerRef,
-}: AsciiBackdropProps) {
+function renderGroup(active: boolean) {
+  return groupCells.map(({ column, row }, index) => {
+    const x = column * cellPitch;
+    const y = row * cellPitch;
+    const diagonalInterior =
+      column > 0 && column < 4 && row > 0 && row < 4;
+    const activeFill = diagonalInterior ? '#2a2a2a' : '#444444';
+    const squarePath =
+      `M${x} ${y}H${x + cellSize}V${y + cellSize}H${x}Z`;
+
+    return (
+      <g key={index}>
+        <path
+          d={squarePath}
+          fill={active ? activeFill : 'none'}
+          stroke={active ? activeFill : '#1d1d1d'}
+          strokeWidth="1"
+          strokeLinejoin="miter"
+        />
+
+        {!active && diagonalInterior && (
+          <path
+            d={`M${x} ${y}L${x + cellSize} ${y + cellSize}`}
+            fill="none"
+            stroke="#1d1d1d"
+            strokeWidth="1"
+          />
+        )}
+      </g>
+    );
+  });
+}
+
+export default function AsciiBackdrop() {
   return (
     <svg
       className="hero-ascii-backdrop"
@@ -57,125 +69,55 @@ export default function AsciiBackdrop({
       focusable="false"
     >
       <defs>
-        <filter
-          id="hero-ascii-light-brightness"
-          colorInterpolationFilters="sRGB"
+        <symbol
+          id="ascii-resting-group"
+          viewBox={`0 0 ${groupWidth} ${groupWidth}`}
+          overflow="visible"
         >
-          <feComponentTransfer>
-            <feFuncR type="linear" slope="1.6" />
-            <feFuncG type="linear" slope="1.6" />
-            <feFuncB type="linear" slope="1.6" />
-          </feComponentTransfer>
-        </filter>
+          {renderGroup(false)}
+        </symbol>
 
-        <radialGradient
-          ref={lightGradientRef}
-          id="hero-ascii-light-gradient"
-          gradientUnits="userSpaceOnUse"
-          cx="0"
-          cy="0"
-          r="0"
+        <symbol
+          id="ascii-active-group"
+          viewBox={`0 0 ${groupWidth} ${groupWidth}`}
+          overflow="visible"
         >
-          <stop offset="0" stopColor="white" />
-          <stop offset="1" stopColor="black" />
-        </radialGradient>
-
-        <mask
-          id="hero-ascii-light-mask"
-          maskUnits="userSpaceOnUse"
-          x="0"
-          y="0"
-          width="100%"
-          height="100%"
-        >
-          <rect
-            width="100%"
-            height="100%"
-            fill="url(#hero-ascii-light-gradient)"
-          />
-        </mask>
+          {renderGroup(true)}
+        </symbol>
 
         <pattern
-          id="hero-ascii-pattern"
-          width={patternSize}
-          height={patternSize}
+          id="ascii-sequencer-pattern"
+          x={10}
+          width={patternWidth}
+          height={patternHeight}
           patternUnits="userSpaceOnUse"
+          overflow="visible"
         >
-          <g
-            fill="none"
-            stroke="#777"
-            strokeWidth="1.2"
-            strokeLinejoin="miter"
-          >
-            {backgroundCells.map(({ x, y, kind }, index) => {
-              const offsetX = x * cellSize;
-              const offsetY = y * cellSize;
-              const glyphTransform =
-                `translate(${offsetX} ${offsetY}) scale(${glyphScale})`;
+          {groupPlacements.map(({ column, row }) => {
+            const active = activeGroups.has(`${column},${row}`);
 
-              if (kind === 'filled') {
-                return (
-                  <rect
-                    key={index}
-                    transform={glyphTransform}
-                    x="3"
-                    y="3"
-                    width="12"
-                    height="12"
-                    fill="#777"
-                  />
-                );
-              }
-
-              if (kind === 'square') {
-                return (
-                  <rect
-                    key={index}
-                    transform={glyphTransform}
-                    x="2.5"
-                    y="2.5"
-                    width="13"
-                    height="13"
-                  />
-                );
-              }
-
-              if (kind === 'diagonal') {
-                return (
-                  <path
-                    key={index}
-                    transform={glyphTransform}
-                    d="M2 16L16 2"
-                  />
-                );
-              }
-
-              return (
-                <path
-                  key={index}
-                  transform={glyphTransform}
-                  d="M9 2v14M2 9h14"
-                />
-              );
-            })}
-          </g>
+            return (
+              <use
+                key={`${column},${row}`}
+                href={
+                  active
+                    ? '#ascii-active-group'
+                    : '#ascii-resting-group'
+                }
+                x={column * groupPitch}
+                y={row * groupPitch}
+                width={groupWidth}
+                height={groupWidth}
+              />
+            );
+          })}
         </pattern>
       </defs>
 
       <rect
         width="100%"
         height="100%"
-        fill="url(#hero-ascii-pattern)"
-        opacity="0.23"
-      />
-      <rect
-        ref={lightLayerRef}
-        width="100%"
-        height="100%"
-        fill="url(#hero-ascii-pattern)"
-        filter="url(#hero-ascii-light-brightness)"
-        mask="url(#hero-ascii-light-mask)"
-        opacity="0"
+        fill="url(#ascii-sequencer-pattern)"
       />
     </svg>
   );

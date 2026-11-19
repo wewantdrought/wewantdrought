@@ -19,8 +19,6 @@ const boundaries = [homeSectionGuide, 609, 713, 979, 1120, 1375];
 export default function App() {
   const heroRef = useRef<HTMLElement>(null);
   const vinylRef = useRef<HTMLDivElement>(null);
-  const lightGradientRef = useRef<SVGRadialGradientElement>(null);
-  const lightLayerRef = useRef<SVGRectElement>(null);
   const pointerLight = useRef<PointerLightState>({
     clientX: 0,
     clientY: 0,
@@ -58,22 +56,6 @@ export default function App() {
     };
 
     const updateVisuals = () => {
-      const bounds = hero.getBoundingClientRect();
-      const gradient = lightGradientRef.current;
-      const layer = lightLayerRef.current;
-
-      if (gradient) {
-        gradient.setAttribute('cx', String(smoothX - bounds.left));
-        gradient.setAttribute('cy', String(smoothY - bounds.top));
-        gradient.setAttribute('r', String(pointerLight.current.radius));
-      }
-
-      if (layer) {
-        layer.style.opacity = String(
-          strength * pointerLightSettings.maximumBackgroundOpacity,
-        );
-      }
-
       pointerLight.current.clientX = smoothX;
       pointerLight.current.clientY = smoothY;
       pointerLight.current.strength = strength;
@@ -233,10 +215,7 @@ export default function App() {
     <main ref={heroRef} className="hero">
       <h1 className="visually-hidden">Rain Li</h1>
 
-      <AsciiBackdrop
-        lightGradientRef={lightGradientRef}
-        lightLayerRef={lightLayerRef}
-      />
+      <AsciiBackdrop />
 
       <svg
         className="hero-diagonal"
