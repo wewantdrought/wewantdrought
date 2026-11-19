@@ -1,15 +1,12 @@
-export type BackdropDisturbance = {
-  id: number;
-  clientX: number;
-  clientY: number;
-  directionX: number;
-  directionY: number;
+export type BackdropPointerSegment = {
+  fromClientX: number;
+  fromClientY: number;
+  toClientX: number;
+  toClientY: number;
   velocityX: number;
   velocityY: number;
-  speedRatio: number;
-  intensity: number;
-  startedAt: number;
-  lifetimeSeconds: number;
+  speed: number;
+  time: number;
   reducedMotion: boolean;
 };
 
@@ -18,7 +15,9 @@ export type PointerLightState = {
   clientY: number;
   radius: number;
   strength: number;
-  backdropDisturbances: BackdropDisturbance[];
+  backdropSegments: BackdropPointerSegment[];
+  backdropPointerActive: boolean;
+  backdropResetVersion: number;
   invalidate: (() => void) | null;
   invalidateBackdrop: (() => void) | null;
 };
@@ -29,25 +28,24 @@ export const pointerLightSettings = {
   smoothingSeconds: 0.1,
   fadeInSeconds: 0.15,
   fadeOutSeconds: 0.2,
+  backdropSimulationSize: 160,
   backdropGroupWidth: 73,
-  backdropVelocityWindowSeconds: 0.09,
   backdropVelocitySmoothingSeconds: 0.035,
-  backdropMinimumSpeed: 45,
-  backdropMaximumSpeed: 1200,
-  backdropEmissionDistancePixels: 5,
-  backdropEmissionIntervalSeconds: 0.035,
-  backdropMaximumDisturbances: 10,
-  backdropLifetimeMinimumSeconds: 0.4,
-  backdropLifetimeMaximumSeconds: 0.7,
-  backdropReducedMotionLifetimeSeconds: 0.12,
-  backdropForwardOffsetSeconds: 0.018,
-  backdropForwardOffsetMaximumPixels: 24,
-  backdropParticleVelocityScale: 0.6,
-  backdropParticleDragPerSecond: 2.8,
-  backdropBaseHalfLength: 9,
-  backdropSpeedHalfLength: 22,
-  backdropBaseHalfWidth: 12,
-  backdropSpeedHalfWidth: 20,
-  backdropSpreadAngleDegrees: 7,
+  backdropMaximumInputSpeed: 1200,
+  backdropMaximumPendingSegments: 64,
+  backdropMaximumSegmentsPerFrame: 24,
+  backdropMovementThresholdPixels: 0.5,
+  backdropMaximumFrameDeltaSeconds: 0.04,
+  backdropPressureIterations: 12,
+  backdropVelocityDissipation: 1.4,
+  backdropActivationDissipation: 1.8,
+  backdropReducedMotionDissipation: 24,
+  backdropReducedMotionTrailSeconds: 0.14,
+  backdropPointerForce: 4.5,
+  backdropActivationForce: 1.6,
+  backdropInputRadiusPixels: 18,
+  backdropMaximumFlowSpeed: 1.5,
+  backdropVelocityZeroThreshold: 0.002,
+  backdropMaximumTrailSeconds: 3.25,
   backdropMaximumOpacity: 0.92,
 };

@@ -30,7 +30,9 @@ export default function App() {
     clientY: 0,
     radius: 0,
     strength: 0,
-    backdropDisturbances: [],
+    backdropSegments: [],
+    backdropPointerActive: false,
+    backdropResetVersion: 0,
     invalidate: null,
     invalidateBackdrop: null,
   });
@@ -55,9 +57,6 @@ export default function App() {
     let pointerSamples: PointerSample[] = [];
     let velocityX = 0;
     let velocityY = 0;
-    let distanceSinceEmission = 0;
-    let lastEmissionAt = Number.NEGATIVE_INFINITY;
-    let nextDisturbanceId = 0;
 
     const finePointer = window.matchMedia(
       '(any-hover: hover) and (any-pointer: fine)',
@@ -74,76 +73,65 @@ export default function App() {
       pointerLight.current.clientY = smoothY;
       pointerLight.current.strength = strength;
       pointerLight.current.invalidate?.();
-      pointerLight.current.invalidateBackdrop?.();
     };
 
-    const resetVelocityHistory = () => {
+    const resetPointerHistory = () => {
       pointerSamples = [];
       velocityX = 0;
       velocityY = 0;
-      distanceSinceEmission = 0;
-      lastEmissionAt = Number.NEGATIVE_INFINITY;
     };
 
-    const emitDisturbance = (
-      clientX: number,
-      clientY: number,
-      directionX: number,
-      directionY: number,
-      speed: number,
-      now: number,
-      reducedMotion = false,
-    ) => {
-      const speedRatio = Math.max(
-        0,
-        Math.min(
-          1,
-          (speed - pointerLightSettings.backdropMinimumSpeed) /
-            (pointerLightSettings.backdropMaximumSpeed -
-              pointerLightSettings.backdropMinimumSpeed),
-        ),
-      );
-      const forwardOffset = reducedMotion
-        ? 0
-        : Math.min(
-            pointerLightSettings.backdropForwardOffsetMaximumPixels,
-            speed * pointerLightSettings.backdropForwardOffsetSeconds,
-          );
-      const lifetimeSeconds = reducedMotion
-        ? pointerLightSettings.backdropReducedMotionLifetimeSeconds
-        : pointerLightSettings.backdropLifetimeMinimumSeconds +
-          speedRatio *
-            (pointerLightSettings.backdropLifetimeMaximumSeconds -
-              pointerLightSettings.backdropLifetimeMinimumSeconds);
+    const sampleTime = (event: PointerEvent) =>
+      Number.isFinite(event.timeStamp)
+        ? event.timeStamp
+        : performance.now();
 
-      pointerLight.current.backdropDisturbances.push({
-        id: nextDisturbanceId,
-        clientX: clientX + directionX * forwardOffset,
-        clientY: clientY + directionY * forwardOffset,
-        directionX,
-        directionY,
-        velocityX: reducedMotion
-          ? 0
-          : velocityX * pointerLightSettings.backdropParticleVelocityScale,
-        velocityY: reducedMotion
-          ? 0
-          : velocityY * pointerLightSettings.backdropParticleVelocityScale,
-        speedRatio,
-        intensity: 0.55 + speedRatio * 0.45,
-        startedAt: now,
-        lifetimeSeconds,
+    const addBackdropSegment = (
+      from: PointerSample,
+      to: PointerSample,
+      reducedMotion: boolean,
+    ) => {
+      const elapsedSeconds = Math.max((to.time - from.time) / 1000, 0.001);
+      const rawVelocityX = (to.clientX - from.clientX) / elapsedSeconds;
+      const rawVelocityY = (to.clientY - from.clientY) / elapsedSeconds;
+      const blend =
+        1 -
+        Math.exp(
+          -elapsedSeconds /
+            pointerLightSettings.backdropVelocitySmoothingSeconds,
+        );
+
+      velocityX += (rawVelocityX - velocityX) * blend;
+      velocityY += (rawVelocityY - velocityY) * blend;
+
+      const estimatedSpeed = Math.hypot(velocityX, velocityY);
+      if (estimatedSpeed > pointerLightSettings.backdropMaximumInputSpeed) {
+        const velocityScale =
+          pointerLightSettings.backdropMaximumInputSpeed / estimatedSpeed;
+        velocityX *= velocityScale;
+        velocityY *= velocityScale;
+      }
+
+      pointerLight.current.backdropSegments.push({
+        fromClientX: from.clientX,
+        fromClientY: from.clientY,
+        toClientX: to.clientX,
+        toClientY: to.clientY,
+        velocityX,
+        velocityY,
+        speed: Math.hypot(velocityX, velocityY),
+        time: to.time,
         reducedMotion,
       });
-      nextDisturbanceId += 1;
 
       if (
-        pointerLight.current.backdropDisturbances.length >
-        pointerLightSettings.backdropMaximumDisturbances
+        pointerLight.current.backdropSegments.length >
+        pointerLightSettings.backdropMaximumPendingSegments
       ) {
-        pointerLight.current.backdropDisturbances.splice(
+        pointerLight.current.backdropSegments.splice(
           0,
-          pointerLight.current.backdropDisturbances.length -
-            pointerLightSettings.backdropMaximumDisturbances,
+          pointerLight.current.backdropSegments.length -
+            pointerLightSettings.backdropMaximumPendingSegments,
         );
       }
 
@@ -151,13 +139,6 @@ export default function App() {
     };
 
     const animate = (time: number) => {
-      pointerLight.current.backdropDisturbances =
-        pointerLight.current.backdropDisturbances.filter(
-          (disturbance) =>
-            time - disturbance.startedAt <
-            disturbance.lifetimeSeconds * 1000,
-        );
-
       const delta =
         previousTime === 0 ? 0 : Math.min((time - previousTime) / 1000, 0.05);
       previousTime = time;
@@ -187,9 +168,7 @@ export default function App() {
       updateVisuals();
 
       if (
-        active ||
-        strength > 0 ||
-        pointerLight.current.backdropDisturbances.length > 0
+        active || strength > 0
       ) {
         frame = window.requestAnimationFrame(animate);
       } else {
@@ -212,12 +191,13 @@ export default function App() {
       smoothY = targetY;
       strength = 0;
       previousTime = 0;
-      resetVelocityHistory();
-      pointerSamples.push({
+      resetPointerHistory();
+      pointerSamples = [{
         clientX: event.clientX,
         clientY: event.clientY,
-        time: performance.now(),
-      });
+        time: sampleTime(event),
+      }];
+      pointerLight.current.backdropPointerActive = true;
 
       updateVisuals();
     };
@@ -232,95 +212,37 @@ export default function App() {
         return;
       }
 
-      const now = performance.now();
-      const deltaX = event.clientX - targetX;
-      const deltaY = event.clientY - targetY;
-      const movementDistance = Math.hypot(deltaX, deltaY);
       targetX = event.clientX;
       targetY = event.clientY;
 
-      if (movementDistance === 0) {
-        return;
-      }
+      const coalescedSamples = event.getCoalescedEvents?.();
+      const samples =
+        coalescedSamples && coalescedSamples.length > 0
+          ? coalescedSamples
+          : [event];
 
-      const previousSample = pointerSamples[0];
-      const elapsedSeconds = previousSample
-        ? Math.max((now - previousSample.time) / 1000, 0.001)
-        : 0;
-      const rawVelocityX = previousSample
-        ? (event.clientX - previousSample.clientX) / elapsedSeconds
-        : 0;
-      const rawVelocityY = previousSample
-        ? (event.clientY - previousSample.clientY) / elapsedSeconds
-        : 0;
-      const velocityBlend = previousSample
-        ? 1 -
-          Math.exp(
-            -elapsedSeconds /
-              pointerLightSettings.backdropVelocitySmoothingSeconds,
-          )
-        : 1;
-
-      velocityX += (rawVelocityX - velocityX) * velocityBlend;
-      velocityY += (rawVelocityY - velocityY) * velocityBlend;
-
-      const estimatedSpeed = Math.hypot(velocityX, velocityY);
-      if (estimatedSpeed > pointerLightSettings.backdropMaximumSpeed) {
-        const velocityScale =
-          pointerLightSettings.backdropMaximumSpeed / estimatedSpeed;
-        velocityX *= velocityScale;
-        velocityY *= velocityScale;
-      }
-
-      const sampleCutoff =
-        now - pointerLightSettings.backdropVelocityWindowSeconds * 1000;
-      pointerSamples = pointerSamples.filter(
-        (sample) => sample.time >= sampleCutoff,
-      );
-      pointerSamples.push({
-        clientX: event.clientX,
-        clientY: event.clientY,
-        time: now,
-      });
-
-      const speed = Math.hypot(velocityX, velocityY);
-      const directionLength = Math.hypot(velocityX, velocityY);
-      const directionX = directionLength > 0 ? velocityX / directionLength : 0;
-      const directionY = directionLength > 0 ? velocityY / directionLength : 0;
-
-      if (prefersReducedMotion) {
-        emitDisturbance(
-          event.clientX,
-          event.clientY,
-          directionX,
-          directionY,
-          speed,
-          now,
-          true,
+      for (const sample of samples) {
+        const next = {
+          clientX: sample.clientX,
+          clientY: sample.clientY,
+          time: sampleTime(sample),
+        };
+        const previous =
+          pointerSamples[pointerSamples.length - 1] ?? next;
+        const distance = Math.hypot(
+          next.clientX - previous.clientX,
+          next.clientY - previous.clientY,
         );
-        return;
-      }
 
-      distanceSinceEmission += movementDistance;
-      const minimumIntervalMilliseconds =
-        pointerLightSettings.backdropEmissionIntervalSeconds * 1000;
-
-      if (
-        speed >= pointerLightSettings.backdropMinimumSpeed &&
-        distanceSinceEmission >=
-          pointerLightSettings.backdropEmissionDistancePixels &&
-        now - lastEmissionAt >= minimumIntervalMilliseconds
-      ) {
-        emitDisturbance(
-          event.clientX,
-          event.clientY,
-          directionX,
-          directionY,
-          speed,
-          now,
-        );
-        distanceSinceEmission = 0;
-        lastEmissionAt = now;
+        if (distance >= pointerLightSettings.backdropMovementThresholdPixels) {
+          pointerSamples.push(next);
+          if (pointerSamples.length > 2) {
+            pointerSamples.splice(0, pointerSamples.length - 2);
+          }
+          addBackdropSegment(previous, next, prefersReducedMotion);
+        } else if (pointerSamples.length === 0) {
+          pointerSamples.push(next);
+        }
       }
     };
 
@@ -342,16 +264,13 @@ export default function App() {
 
     const onLeave = () => {
       active = false;
-      resetVelocityHistory();
+      resetPointerHistory();
+      pointerLight.current.backdropPointerActive = false;
 
       if (prefersReducedMotion) {
-        pointerLight.current.backdropDisturbances = [];
         strength = 0;
         updateVisuals();
-      } else if (
-        strength > 0 ||
-        pointerLight.current.backdropDisturbances.length > 0
-      ) {
+      } else if (strength > 0) {
         beginAnimation();
       }
     };
@@ -359,11 +278,17 @@ export default function App() {
     const clearImmediately = () => {
       active = false;
       strength = 0;
-      resetVelocityHistory();
-      pointerLight.current.backdropDisturbances = [];
+      resetPointerHistory();
+      pointerLight.current.backdropPointerActive = false;
+      pointerLight.current.backdropSegments = [];
+      pointerLight.current.backdropResetVersion += 1;
       window.cancelAnimationFrame(frame);
       frame = 0;
       updateVisuals();
+
+      if (!document.hidden) {
+        pointerLight.current.invalidateBackdrop?.();
+      }
     };
 
     const onVisibilityChange = () => {
@@ -379,7 +304,8 @@ export default function App() {
     updateRadius();
     strength = 0;
     pointerLight.current.strength = 0;
-    pointerLight.current.backdropDisturbances = [];
+    pointerLight.current.backdropSegments = [];
+    pointerLight.current.backdropPointerActive = false;
     updateVisuals();
 
     const resizeObserver = new ResizeObserver(updateRadius);
@@ -423,7 +349,10 @@ export default function App() {
     <main ref={heroRef} className="hero">
       <h1 className="visually-hidden">Rain Li</h1>
 
-      <AsciiBackdrop pointerLight={pointerLight} />
+      <AsciiBackdrop
+        pointerLight={pointerLight}
+        prefersReducedMotion={prefersReducedMotion}
+      />
 
       <svg
         className="hero-diagonal"
