@@ -1,4 +1,9 @@
-import { useEffect, useMemo } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type MutableRefObject,
+} from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -9,6 +14,24 @@ const asciiSettings = {
   brightnessMinimum: 0.02,
   brightnessMaximum: 0.62,
   glyphBrightness: 0.94,
+};
+
+export type PointerLightState = {
+  x: number;
+  y: number;
+  active: boolean;
+};
+
+type AsciiVinylPassProps = {
+  pointerLight: MutableRefObject<PointerLightState>;
+  reducedMotion: boolean;
+};
+
+const pointerLightSettings = {
+  radiusWidthFraction: 0.16,
+  maximumStrength: 0.28,
+  smoothingSeconds: 0.1,
+  fadeOutSeconds: 0.2,
 };
 
 const vertexShader = `
@@ -26,11 +49,20 @@ const fragmentShader = `
   uniform float uBrightnessMinimum;
   uniform float uBrightnessMaximum;
   uniform float uGlyphBrightness;
+  uniform vec2 uPointer;
+  uniform float uLightRadius;
+  uniform float uLightStrength;
 
   void main() {
     vec2 cellOrigin =
       floor(gl_FragCoord.xy / uCellSize) * uCellSize;
     vec2 cellPosition = fract(gl_FragCoord.xy / uCellSize);
+    vec2 cellCenter = cellOrigin + 0.5 * uCellSize;
+    float radiusRatio =
+      distance(cellCenter, uPointer) / max(uLightRadius, 1.0);
+    float pointerFalloff =
+      1.0 - smoothstep(0.0, 1.0, radiusRatio);
+    pointerFalloff *= pointerFalloff;
 
     float coverageSum = 0.0;
     vec3 colorSum = vec3(0.0);
@@ -63,9 +95,14 @@ const fragmentShader = `
       dot(colorSum, vec3(0.2126, 0.7152, 0.0722)) /
       max(coverageSum, 0.001);
     float luminance = mix(averageLuminance, peakLuminance, 0.35);
+    float illuminatedLuminance = mix(
+      luminance,
+      1.0,
+      uLightStrength * pointerFalloff
+    );
 
     float brightness = clamp(
-      (luminance - uBrightnessMinimum) /
+      (illuminatedLuminance - uBrightnessMinimum) /
         max(uBrightnessMaximum - uBrightnessMinimum, 0.001),
       0.0,
       1.0
@@ -126,8 +163,11 @@ function createGlyphAtlas() {
   return texture;
 }
 
-export default function AsciiVinylPass() {
-  const { gl, scene, camera } = useThree();
+export default function AsciiVinylPass({
+  pointerLight,
+  reducedMotion,
+}: AsciiVinylPassProps) {
+  const { gl, scene, camera, invalidate } = useThree();
 
   const renderTarget = useMemo(() => {
     const target = new THREE.WebGLRenderTarget(1, 1, {
@@ -167,6 +207,9 @@ export default function AsciiVinylPass() {
       uGlyphBrightness: {
         value: asciiSettings.glyphBrightness,
       },
+      uPointer: { value: new THREE.Vector2() },
+      uLightRadius: { value: 1 },
+      uLightStrength: { value: 0 },
     }),
     [glyphAtlas, renderTarget],
   );
@@ -219,6 +262,9 @@ export default function AsciiVinylPass() {
     () => new THREE.Vector2(),
     [],
   );
+  const smoothedPointer = useMemo(() => new THREE.Vector2(), []);
+  const targetPointer = useMemo(() => new THREE.Vector2(), []);
+  const pointerStrength = useRef(0);
 
   useEffect(
     () => () => {
@@ -230,7 +276,24 @@ export default function AsciiVinylPass() {
     [glyphAtlas, postGeometry, postMaterial, renderTarget],
   );
 
-  useFrame(() => {
+  useEffect(() => {
+    const clearPointer = () => {
+      pointerLight.current.active = false;
+      invalidate();
+    };
+
+    gl.domElement.addEventListener('pointerleave', clearPointer);
+    window.addEventListener('blur', clearPointer);
+    document.addEventListener('visibilitychange', clearPointer);
+
+    return () => {
+      gl.domElement.removeEventListener('pointerleave', clearPointer);
+      window.removeEventListener('blur', clearPointer);
+      document.removeEventListener('visibilitychange', clearPointer);
+    };
+  }, [gl, invalidate, pointerLight]);
+
+  useFrame((_, delta) => {
     gl.getDrawingBufferSize(drawingBufferSize);
 
     const width = Math.max(1, Math.floor(drawingBufferSize.x));
@@ -246,6 +309,35 @@ export default function AsciiVinylPass() {
       asciiSettings.cellWidth * pixelRatio,
       asciiSettings.cellHeight * pixelRatio,
     );
+
+    const pointer = pointerLight.current;
+    targetPointer.set(
+      ((pointer.x + 1) * 0.5) * width,
+      ((pointer.y + 1) * 0.5) * height,
+    );
+
+    if (reducedMotion) {
+      smoothedPointer.copy(targetPointer);
+      pointerStrength.current = pointer.active ? 1 : 0;
+    } else if (pointer.active) {
+      const smoothing =
+        1 - Math.exp(-delta / pointerLightSettings.smoothingSeconds);
+
+      smoothedPointer.lerp(targetPointer, smoothing);
+      pointerStrength.current = 1;
+    } else {
+      pointerStrength.current = Math.max(
+        0,
+        pointerStrength.current -
+          delta / pointerLightSettings.fadeOutSeconds,
+      );
+    }
+
+    uniforms.uPointer.value.copy(smoothedPointer);
+    uniforms.uLightRadius.value =
+      width * pointerLightSettings.radiusWidthFraction;
+    uniforms.uLightStrength.value =
+      pointerStrength.current * pointerLightSettings.maximumStrength;
 
     const previousTarget = gl.getRenderTarget();
 
