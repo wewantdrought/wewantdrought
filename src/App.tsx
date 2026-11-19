@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import AsciiBackdrop from './AsciiBackdrop';
 import AboutBlock from './AboutBlock';
 import VinylScene from './VinylScene';
@@ -25,6 +25,9 @@ type PointerSample = {
 export default function App() {
   const heroRef = useRef<HTMLElement>(null);
   const vinylRef = useRef<HTMLDivElement>(null);
+  const vinylCueRef = useRef<HTMLDivElement>(null);
+  const heroLocationRef = useRef<HTMLParagraphElement>(null);
+  const pointerCursorRef = useRef<HTMLDivElement>(null);
   const pointerLight = useRef<PointerLightState>({
     clientX: 0,
     clientY: 0,
@@ -37,12 +40,90 @@ export default function App() {
     invalidateBackdrop: null,
   });
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const [vinylCueVisible, setVinylCueVisible] = useState(true);
+  const handleVinylActivated = () => setVinylCueVisible(false);
+
+  useLayoutEffect(() => {
+    const hero = heroRef.current;
+    const vinyl = vinylRef.current;
+    const cue = vinylCueRef.current;
+    const location = heroLocationRef.current;
+
+    if (!hero || !vinyl || !cue || !location) {
+      return;
+    }
+
+    const updateCuePosition = () => {
+      if (window.innerWidth <= 700) {
+        cue.style.position = 'relative';
+        cue.style.left = '';
+        cue.style.top = '';
+        cue.style.margin = '8px 16px 0 auto';
+        return;
+      }
+
+      const heroBounds = hero.getBoundingClientRect();
+      const vinylBounds = vinyl.getBoundingClientRect();
+      const locationBounds = location.getBoundingClientRect();
+      const visibleVinylRight =
+        vinylBounds.left -
+        heroBounds.left +
+        vinylBounds.width * 0.79;
+      const left = visibleVinylRight + 8;
+      const cueWidth = cue.offsetWidth;
+      const cueHeight = cue.offsetHeight;
+      const locationLeft = locationBounds.left - heroBounds.left;
+      const locationRight = locationBounds.right - heroBounds.left;
+      const locationTop = locationBounds.top - heroBounds.top;
+      const locationBottom = locationBounds.bottom - heroBounds.top;
+
+      let top =
+        vinylBounds.top -
+        heroBounds.top +
+        vinylBounds.height * (window.innerWidth <= 1100 ? 0.84 : 0.6325);
+
+      const overlapsLocation =
+        left < locationRight &&
+        left + cueWidth > locationLeft &&
+        top < locationBottom &&
+        top + cueHeight > locationTop;
+
+      if (overlapsLocation) {
+        const belowLocation = locationBottom + 8;
+        const aboveLocation = locationTop - cueHeight - 8;
+
+        top =
+          belowLocation + cueHeight <= heroBounds.height
+            ? belowLocation
+            : Math.max(8, aboveLocation);
+      }
+
+      cue.style.position = 'absolute';
+      cue.style.margin = '0';
+      cue.style.left = `${left}px`;
+      cue.style.top = `${top}px`;
+    };
+
+    updateCuePosition();
+
+    const observer = new ResizeObserver(updateCuePosition);
+    observer.observe(hero);
+    observer.observe(vinyl);
+    observer.observe(location);
+    window.addEventListener('resize', updateCuePosition);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateCuePosition);
+    };
+  }, []);
 
   useEffect(() => {
     const hero = heroRef.current;
     const vinyl = vinylRef.current;
+    const pointerCursor = pointerCursorRef.current;
 
-    if (!hero || !vinyl) {
+    if (!hero || !vinyl || !pointerCursor) {
       return;
     }
 
@@ -61,6 +142,16 @@ export default function App() {
     const finePointer = window.matchMedia(
       '(any-hover: hover) and (any-pointer: fine)',
     );
+
+    const positionCursor = (event: PointerEvent) => {
+      if (event.pointerType === 'touch' || !finePointer.matches) {
+        return;
+      }
+
+      pointerCursor.style.transform =
+        `translate3d(${event.clientX - 8}px, ${event.clientY - 8}px, 0)`;
+      pointerCursor.style.opacity = '1';
+    };
 
     const updateRadius = () => {
       pointerLight.current.radius =
@@ -207,6 +298,8 @@ export default function App() {
         return;
       }
 
+      positionCursor(event);
+
       if (!active) {
         startAt(event);
         return;
@@ -264,6 +357,7 @@ export default function App() {
 
     const onLeave = () => {
       active = false;
+      pointerCursor.style.opacity = '0';
       resetPointerHistory();
       pointerLight.current.backdropPointerActive = false;
 
@@ -277,6 +371,7 @@ export default function App() {
 
     const clearImmediately = () => {
       active = false;
+      pointerCursor.style.opacity = '0';
       strength = 0;
       resetPointerHistory();
       pointerLight.current.backdropPointerActive = false;
@@ -413,9 +508,44 @@ export default function App() {
         containerRef={vinylRef}
         pointerLight={pointerLight}
         prefersReducedMotion={prefersReducedMotion}
+        onActivate={handleVinylActivated}
       />
 
-      <p className="hero-location">Vancouver, CA / 2026</p>
+      <div
+        ref={vinylCueRef}
+        className={
+          vinylCueVisible
+            ? 'hero-vinyl-cue'
+            : 'hero-vinyl-cue is-dismissed'
+        }
+        aria-hidden="true"
+      >
+        <span>CLICK ME</span>
+        <svg viewBox="0 0 39 11" aria-hidden="true" focusable="false">
+          <path d="M38.5 0.5V5.5H1.5M1.5 5.5 7 1M1.5 5.5 7 10" />
+        </svg>
+      </div>
+
+      <div
+        ref={pointerCursorRef}
+        className="hero-pointer-cursor"
+        aria-hidden="true"
+      >
+        <svg viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+          <path d="M8 0.5v4M8 11.5v4M0.5 8h4M11.5 8h4" />
+          <circle
+            cx="8"
+            cy="8"
+            r="0.75"
+            fill="currentColor"
+            stroke="none"
+          />
+        </svg>
+      </div>
+
+      <p ref={heroLocationRef} className="hero-location">
+        Vancouver, CA / 2026
+      </p>
     </main>
   );
 }

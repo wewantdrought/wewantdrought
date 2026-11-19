@@ -242,6 +242,98 @@ body {
   text-align: right;
 }
 
+.hero-vinyl-cue {
+  position: absolute;
+  z-index: 2;
+  top: calc(54.5% + 4.27vw);
+  left: calc(50% + 26.45% + 20px);
+  width: 150px;
+  height: 58px;
+  color: #fff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 19px;
+  pointer-events: none;
+  transition: opacity 180ms ease;
+}
+
+.hero-vinyl-cue.is-dismissed {
+  opacity: 0;
+}
+
+.hero-vinyl-cue span {
+  position: absolute;
+  top: 0;
+  left: 34px;
+  width: 110px;
+  height: 19px;
+  white-space: nowrap;
+}
+
+.hero-vinyl-cue svg {
+  position: absolute;
+  top: 19px;
+  left: 8px;
+  width: 39px;
+  height: 11px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+
+.hero-pointer-cursor {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  left: 0;
+  display: none;
+  width: 16px;
+  height: 16px;
+  color: #fff;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.hero-pointer-cursor svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1;
+  stroke-linecap: square;
+}
+
+@media (any-hover: hover) and (any-pointer: fine) {
+  .hero,
+  .hero * {
+    cursor: none;
+  }
+
+  .hero-pointer-cursor {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-vinyl-cue {
+    transition: none;
+  }
+}
+
+@media (max-width: 1100px) {
+  .hero-vinyl-cue {
+    position: relative;
+    top: auto;
+    left: auto;
+    margin: 8px 16px 0 auto;
+  }
+}
+
 @media (max-width: 700px) {
   .hero {
     padding-bottom: 48px;

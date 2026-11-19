@@ -74,6 +74,7 @@ type VinylMotionProps = {
   reducedMotion: boolean;
   pressTarget: PressTarget;
   pressTargetChange: (target: PressTarget) => void;
+  onActivate: () => void;
 };
 
 function Vinyl({
@@ -81,6 +82,7 @@ function Vinyl({
   reducedMotion,
   pressTarget,
   pressTargetChange,
+  onActivate,
 }: VinylMotionProps) {
   const driftGroup = useRef<THREE.Group>(null);
   const interactionGroup = useRef<THREE.Group>(null);
@@ -130,8 +132,9 @@ function Vinyl({
         y: localPoint.y / divisor,
         pointerId: event.pointerId,
       });
+      onActivate();
     },
-    [pressTargetChange],
+    [onActivate, pressTargetChange],
   );
 
   useEffect(() => {
@@ -292,12 +295,14 @@ type VinylSceneProps = {
   containerRef: MutableRefObject<HTMLDivElement | null>;
   pointerLight: MutableRefObject<PointerLightState>;
   prefersReducedMotion: boolean;
+  onActivate: () => void;
 };
 
 export default function VinylScene({
   containerRef,
   pointerLight,
   prefersReducedMotion,
+  onActivate,
 }: VinylSceneProps) {
   const showNormalVinyl =
     import.meta.env.DEV &&
@@ -325,9 +330,10 @@ export default function VinylScene({
 
       if (!event.repeat) {
         setPressTarget({ x: 0, y: 0, pointerId: null });
+        onActivate();
       }
     },
-    [],
+    [onActivate],
   );
 
   const handleKeyUp = useCallback(
@@ -421,6 +427,7 @@ export default function VinylScene({
           reducedMotion={prefersReducedMotion}
           pressTarget={pressTarget}
           pressTargetChange={setPressTarget}
+          onActivate={onActivate}
         />
         {!showNormalVinyl && (
           <AsciiVinylPass pointerLight={pointerLight} />
