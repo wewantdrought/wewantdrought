@@ -10,12 +10,19 @@ export type BackdropPointerSegment = {
   reducedMotion: boolean;
 };
 
+export type BackdropRipple = {
+  clientX: number;
+  clientY: number;
+  radiusPixels: number;
+};
+
 export type PointerLightState = {
   clientX: number;
   clientY: number;
   radius: number;
   strength: number;
   backdropSegments: BackdropPointerSegment[];
+  backdropRipples: BackdropRipple[];
   backdropPointerActive: boolean;
   backdropResetVersion: number;
   invalidate: (() => void) | null;
@@ -34,6 +41,8 @@ export const pointerLightSettings = {
   backdropMaximumInputSpeed: 1200,
   backdropMaximumPendingSegments: 64,
   backdropMaximumSegmentsPerFrame: 24,
+  backdropMaximumPendingRipples: 8,
+  backdropMaximumRipplesPerFrame: 4,
   backdropMovementThresholdPixels: 0.5,
   backdropMaximumFrameDeltaSeconds: 0.04,
   backdropPressureIterations: 12,

@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import * as THREE from 'three';
 import AsciiVinylPass from './AsciiVinylPass';
-import type { PointerLightState } from './pointerLight';
+import { pointerLightSettings, type PointerLightState } from './pointerLight';
 
 const grooveVertexShader = `
   varying vec3 localPosition;
@@ -74,7 +74,8 @@ type VinylMotionProps = {
   reducedMotion: boolean;
   pressTarget: PressTarget;
   pressTargetChange: (target: PressTarget) => void;
-  onActivate: () => void;
+  onPointerPress: (event: PointerEvent) => void;
+  onPointerRelease: (event: PointerEvent) => void;
 };
 
 function Vinyl({
@@ -82,7 +83,8 @@ function Vinyl({
   reducedMotion,
   pressTarget,
   pressTargetChange,
-  onActivate,
+  onPointerPress,
+  onPointerRelease,
 }: VinylMotionProps) {
   const driftGroup = useRef<THREE.Group>(null);
   const interactionGroup = useRef<THREE.Group>(null);
@@ -132,9 +134,9 @@ function Vinyl({
         y: localPoint.y / divisor,
         pointerId: event.pointerId,
       });
-      onActivate();
+      onPointerPress(event.nativeEvent);
     },
-    [onActivate, pressTargetChange],
+    [onPointerPress, pressTargetChange],
   );
 
   useEffect(() => {
@@ -234,6 +236,7 @@ function Vinyl({
           <group
             ref={interactionGroup}
             onPointerDown={handlePointerDown}
+            onPointerUp={(event) => onPointerRelease(event.nativeEvent)}
           >
             <group ref={spinGroup}>
               <mesh>
@@ -312,6 +315,70 @@ export default function VinylScene({
   const [isInViewport, setIsInViewport] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
   const [pressTarget, setPressTarget] = useState<PressTarget>(null);
+  const pendingRipplePress = useRef<{
+    pointerId: number;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
+
+  const queueRipple = useCallback(
+    () => {
+      const pointer = pointerLight.current;
+      const bounds = containerRef.current?.getBoundingClientRect();
+
+      if (!bounds || !pointer.invalidateBackdrop || document.hidden) {
+        return;
+      }
+
+      if (
+        pointer.backdropRipples.length >=
+        pointerLightSettings.backdropMaximumPendingRipples
+      ) {
+        pointer.backdropRipples.shift();
+      }
+
+      pointer.backdropRipples.push({
+        clientX: bounds.left + bounds.width / 2,
+        clientY: bounds.top + bounds.height / 2,
+        radiusPixels: prefersReducedMotion ? 24 : bounds.width * 0.3,
+      });
+      pointer.invalidateBackdrop();
+    },
+    [containerRef, pointerLight, prefersReducedMotion],
+  );
+
+  const handleDiscPointerPress = useCallback(
+    (event: PointerEvent) => {
+      onActivate();
+
+      if (event.isPrimary && event.button === 0) {
+        pendingRipplePress.current = {
+          pointerId: event.pointerId,
+          clientX: event.clientX,
+          clientY: event.clientY,
+        };
+      }
+    },
+    [onActivate],
+  );
+
+  const handleDiscPointerRelease = useCallback(
+    (event: PointerEvent) => {
+      const press = pendingRipplePress.current;
+      if (press?.pointerId !== event.pointerId) {
+        return;
+      }
+
+      pendingRipplePress.current = null;
+      if (
+        event.button === 0 &&
+        Math.hypot(event.clientX - press.clientX, event.clientY - press.clientY) <= 6
+      ) {
+        queueRipple();
+      }
+    },
+    [queueRipple],
+  );
 
   const motionEnabled =
     isInViewport && isPageVisible && !prefersReducedMotion;
@@ -331,9 +398,10 @@ export default function VinylScene({
       if (!event.repeat) {
         setPressTarget({ x: 0, y: 0, pointerId: null });
         onActivate();
+        queueRipple();
       }
     },
-    [onActivate],
+    [onActivate, queueRipple],
   );
 
   const handleKeyUp = useCallback(
@@ -357,17 +425,40 @@ export default function VinylScene({
       setIsPageVisible(!document.hidden);
 
       if (document.hidden) {
+        pendingRipplePress.current = null;
         releasePress();
       }
     };
 
     const releasePointerPress = (event: PointerEvent) => {
+      if (pendingRipplePress.current?.pointerId === event.pointerId) {
+        pendingRipplePress.current = null;
+      }
+
       setPressTarget((current) =>
         current?.pointerId === event.pointerId ? null : current,
       );
     };
 
+    const cancelRippleOnDrag = (event: PointerEvent) => {
+      const press = pendingRipplePress.current;
+      if (press?.pointerId !== event.pointerId) {
+        return;
+      }
+
+      const samples = event.getCoalescedEvents?.() ?? [];
+      if (
+        [...samples, event].some(
+          (sample) =>
+            Math.hypot(sample.clientX - press.clientX, sample.clientY - press.clientY) > 6,
+        )
+      ) {
+        pendingRipplePress.current = null;
+      }
+    };
+
     const releaseOnBlur = () => {
+      pendingRipplePress.current = null;
       releasePress();
     };
 
@@ -393,6 +484,7 @@ export default function VinylScene({
       onPageVisibilityChange,
     );
     window.addEventListener('pointerup', releasePointerPress);
+    window.addEventListener('pointermove', cancelRippleOnDrag, true);
     window.addEventListener('pointercancel', releasePointerPress);
     window.addEventListener('blur', releaseOnBlur);
 
@@ -403,6 +495,7 @@ export default function VinylScene({
         onPageVisibilityChange,
       );
       window.removeEventListener('pointerup', releasePointerPress);
+      window.removeEventListener('pointermove', cancelRippleOnDrag, true);
       window.removeEventListener(
         'pointercancel',
         releasePointerPress,
@@ -427,7 +520,8 @@ export default function VinylScene({
           reducedMotion={prefersReducedMotion}
           pressTarget={pressTarget}
           pressTargetChange={setPressTarget}
-          onActivate={onActivate}
+          onPointerPress={handleDiscPointerPress}
+          onPointerRelease={handleDiscPointerRelease}
         />
         {!showNormalVinyl && (
           <AsciiVinylPass pointerLight={pointerLight} />

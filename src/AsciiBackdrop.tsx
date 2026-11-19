@@ -81,17 +81,6 @@ export default function AsciiBackdrop({
       return;
     }
 
-    const finePointer = window.matchMedia(
-      '(any-hover: hover) and (any-pointer: fine)',
-    );
-    if (!finePointer.matches) {
-      console.info(
-        '[AsciiBackdrop] Fluid response disabled: no fine pointer detected.',
-      );
-      canvas.style.visibility = 'hidden';
-      return;
-    }
-
     let simulation: AsciiFluidSimulation;
     try {
       simulation = new AsciiFluidSimulation(canvas);
@@ -142,13 +131,18 @@ export default function AsciiBackdrop({
         0,
         pointerLightSettings.backdropMaximumSegmentsPerFrame,
       );
+      const ripples = pointer.backdropRipples.splice(
+        0,
+        pointerLightSettings.backdropMaximumRipplesPerFrame,
+      );
+      const hasInput = segments.length > 0 || ripples.length > 0;
       const deltaSeconds =
         previousFrameTime === 0
           ? 1 / 60
           : (time - previousFrameTime) / 1000;
       previousFrameTime = time;
 
-      if (segments.length > 0) {
+      if (hasInput || simulation.hasActiveRipples) {
         lastInputTime = time;
       }
 
@@ -159,9 +153,10 @@ export default function AsciiBackdrop({
         lastInputTime > 0 &&
         time - lastInputTime < settleSeconds * 1000;
 
-      if (segments.length > 0 || hasRecentInput) {
+      if (hasInput || hasRecentInput) {
         const activation = simulation.update(
           segments,
+          ripples,
           bounds,
           deltaSeconds,
           prefersReducedMotion,
@@ -177,6 +172,7 @@ export default function AsciiBackdrop({
 
       if (
         pointer.backdropSegments.length > 0 ||
+        pointer.backdropRipples.length > 0 ||
         lastInputTime > 0
       ) {
         frame = window.requestAnimationFrame(renderFrame);

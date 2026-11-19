@@ -34,6 +34,7 @@ export default function App() {
     radius: 0,
     strength: 0,
     backdropSegments: [],
+    backdropRipples: [],
     backdropPointerActive: false,
     backdropResetVersion: 0,
     invalidate: null,
@@ -376,6 +377,7 @@ export default function App() {
       resetPointerHistory();
       pointerLight.current.backdropPointerActive = false;
       pointerLight.current.backdropSegments = [];
+      pointerLight.current.backdropRipples = [];
       pointerLight.current.backdropResetVersion += 1;
       window.cancelAnimationFrame(frame);
       frame = 0;
@@ -400,6 +402,7 @@ export default function App() {
     strength = 0;
     pointerLight.current.strength = 0;
     pointerLight.current.backdropSegments = [];
+    pointerLight.current.backdropRipples = [];
     pointerLight.current.backdropPointerActive = false;
     updateVisuals();
 

@@ -1,7 +1,20 @@
 import * as THREE from 'three';
 import { GPUComputationRenderer } from 'three/addons/misc/GPUComputationRenderer.js';
-import type { BackdropPointerSegment } from './pointerLight';
+import type { BackdropPointerSegment, BackdropRipple } from './pointerLight';
 import { pointerLightSettings } from './pointerLight';
+
+const rippleProfileShader = `
+  float rippleInfluence(
+    float distanceToOrigin, float radius, float halfWidth, float reducedMotion
+  ) {
+    if (reducedMotion > 0.5) {
+      return 1.0 - smoothstep(0.0, radius, distanceToOrigin);
+    }
+
+    float distanceFromBand = abs(distanceToOrigin - radius);
+    return 1.0 - smoothstep(0.0, halfWidth, distanceFromBand);
+  }
+`;
 
 const velocityShader = `
   uniform sampler2D uStrokeTexture;
@@ -14,6 +27,8 @@ const velocityShader = `
   uniform float uReducedMotion;
   uniform float uMaximumFlowSpeed;
   uniform float uVelocityZeroThreshold;
+
+  ${rippleProfileShader}
 
   vec4 readStroke(int index, float texelOffset) {
     float x = (float(index) * 2.0 + texelOffset + 0.5) / 128.0;
@@ -42,6 +57,19 @@ const velocityShader = `
 
       vec4 fromTo = readStroke(i, 0.0);
       vec4 motion = readStroke(i, 1.0);
+      if (motion.w > 1.5) {
+        if (uReducedMotion < 0.5) {
+          vec2 offset = point - fromTo.xy;
+          float distanceToOrigin = length(offset);
+          vec2 outward = offset / max(distanceToOrigin, 0.000001);
+          vec2 sideways = vec2(-outward.y, outward.x);
+          float influence = rippleInfluence(
+            distanceToOrigin, fromTo.z, fromTo.w, uReducedMotion
+          );
+          velocity += (outward + sideways * 0.25) * influence * motion.x;
+        }
+        continue;
+      }
       vec2 segmentStart = fromTo.xy;
       vec2 segment = fromTo.zw - segmentStart;
       float segmentLengthSquared = max(dot(segment, segment), 0.000001);
@@ -154,6 +182,8 @@ const activationShader = `
   uniform float uActivationForce;
   uniform float uReducedMotion;
 
+  ${rippleProfileShader}
+
   vec4 readStroke(int index, float texelOffset) {
     float x = (float(index) * 2.0 + texelOffset + 0.5) / 128.0;
     return texture2D(uStrokeTexture, vec2(x, 0.5));
@@ -172,9 +202,9 @@ const activationShader = `
       );
     }
 
-    float activation =
-      texture2D(textureActivation, backUv).r *
-      exp(-uDissipation * uDelta);
+    vec2 previousActivation = texture2D(textureActivation, backUv).rg;
+    float activation = previousActivation.r * exp(-uDissipation * uDelta);
+    float rippleActivation = previousActivation.g * exp(-5.0 * uDelta);
     vec2 point = vec2(vUv.x * uAspect, vUv.y);
     float radiusSquared = uInputRadius * uInputRadius;
 
@@ -185,6 +215,18 @@ const activationShader = `
 
       vec4 fromTo = readStroke(i, 0.0);
       vec4 motion = readStroke(i, 1.0);
+      if (motion.w > 1.5) {
+        float influence = rippleInfluence(
+          length(point - fromTo.xy), fromTo.z, fromTo.w, uReducedMotion
+        );
+        float deposit = influence * motion.y;
+        if (uReducedMotion > 0.5) {
+          activation = mix(clamp(activation, 0.0, 1.0), 1.0, deposit);
+        } else {
+          rippleActivation = mix(rippleActivation, 1.0, deposit);
+        }
+        continue;
+      }
       vec2 segmentStart = fromTo.xy;
       vec2 segment = fromTo.zw - segmentStart;
       float segmentLengthSquared = max(dot(segment, segment), 0.000001);
@@ -213,7 +255,7 @@ const activationShader = `
       activation = 0.0;
     }
 
-    gl_FragColor = vec4(activation, 0.0, 0.0, 1.0);
+    gl_FragColor = vec4(activation, rippleActivation, 0.0, 1.0);
   }
 `;
 
@@ -253,7 +295,19 @@ const cellDisplayFragmentShader = `
       cellCenter.x / uDisplayResolution.x,
       1.0 - cellCenter.y / uDisplayResolution.y
     );
-    float activation = texture2D(uActivation, sampleUv).r;
+    vec2 activationSample = texture2D(uActivation, sampleUv).rg;
+    vec2 groupIndex = floor(patternPosition / 80.5);
+    vec2 cellIndex = groupIndex * 5.0 + floor(tile / 15.5);
+    float cellVariation = fract(
+      sin(dot(cellIndex, vec2(127.1, 311.7))) * 43758.5453
+    );
+    float clusteredVariation =
+      0.5 + 0.25 * sin(cellIndex.x * 0.47 + cellIndex.y * 0.19) +
+      0.25 * sin(cellIndex.y * 0.61 - cellIndex.x * 0.28);
+    float rippleMask = step(
+      0.34, mix(cellVariation, clusteredVariation, 0.55)
+    );
+    float activation = max(activationSample.r, activationSample.g * rippleMask);
 
     if (activation < 0.05) {
       discard;
@@ -270,7 +324,23 @@ const cellDisplayFragmentShader = `
 
 type FluidVariable = ReturnType<GPUComputationRenderer['addVariable']>;
 
+const rippleSpeedPixelsPerSecond = 480;
+const maximumActiveRipples =
+  64 - pointerLightSettings.backdropMaximumSegmentsPerFrame;
+
+type ActiveRipple = {
+  xFraction: number;
+  yFraction: number;
+  radiusFraction: number;
+  distancePixels: number;
+};
+
 export class AsciiFluidSimulation {
+  private activeRipples: ActiveRipple[] = [];
+
+  get hasActiveRipples() {
+    return this.activeRipples.length > 0;
+  }
   readonly renderer: THREE.WebGLRenderer;
 
   private readonly gpu: GPUComputationRenderer;
@@ -447,6 +517,7 @@ export class AsciiFluidSimulation {
 
   update(
     segments: BackdropPointerSegment[],
+    ripples: BackdropRipple[],
     bounds: DOMRect,
     deltaSeconds: number,
     reducedMotion: boolean,
@@ -455,8 +526,61 @@ export class AsciiFluidSimulation {
       0,
       pointerLightSettings.backdropMaximumSegmentsPerFrame,
     );
-    const aspect = Math.max(bounds.width / Math.max(bounds.height, 1), 0.01);
+    const width = Math.max(bounds.width, 1);
     const height = Math.max(bounds.height, 1);
+    const aspect = Math.max(width / height, 0.01);
+    const frameDelta = Math.min(
+      deltaSeconds,
+      pointerLightSettings.backdropMaximumFrameDeltaSeconds,
+    );
+    const newRipples = ripples
+      .slice(0, pointerLightSettings.backdropMaximumRipplesPerFrame)
+      .map((ripple) => ({
+        xFraction: (ripple.clientX - bounds.left) / width,
+        yFraction: 1 - (ripple.clientY - bounds.top) / height,
+        radiusFraction: ripple.radiusPixels / width,
+        distancePixels: reducedMotion ? 0 : ripple.radiusPixels * 0.72,
+      }));
+
+    const viewport = document.documentElement;
+    const visibleLeft = Math.max(0, -bounds.left);
+    const visibleRight = Math.min(width, viewport.clientWidth - bounds.left);
+    const visibleTop = Math.max(0, -bounds.top);
+    const visibleBottom = Math.min(height, viewport.clientHeight - bounds.top);
+    const hasVisibleBackdrop =
+      visibleRight > visibleLeft && visibleBottom > visibleTop;
+    const halfWidthFor = (ripple: ActiveRipple) =>
+      Math.max(22, ripple.radiusFraction * width * 0.2);
+
+    for (const ripple of this.activeRipples) {
+      ripple.distancePixels += rippleSpeedPixelsPerSecond * deltaSeconds;
+    }
+
+    this.activeRipples = reducedMotion
+      ? []
+      : [...this.activeRipples, ...newRipples]
+          .filter((ripple) => {
+            if (!hasVisibleBackdrop) {
+              return false;
+            }
+
+            const x = ripple.xFraction * width;
+            const y = (1 - ripple.yFraction) * height;
+            const farthestX = Math.max(
+              Math.abs(x - visibleLeft),
+              Math.abs(x - visibleRight),
+            );
+            const farthestY = Math.max(
+              Math.abs(y - visibleTop),
+              Math.abs(y - visibleBottom),
+            );
+            const farthestCorner = Math.hypot(farthestX, farthestY);
+
+            return ripple.distancePixels - halfWidthFor(ripple) <= farthestCorner;
+          })
+          .slice(0, maximumActiveRipples);
+
+    const rippleBatch = reducedMotion ? newRipples : this.activeRipples;
 
     this.strokeData.fill(0);
     batch.forEach((segment, index) => {
@@ -481,19 +605,41 @@ export class AsciiFluidSimulation {
         offset + 4,
       );
     });
+    rippleBatch.forEach((ripple, index) => {
+      const offset = (batch.length + index) * 8;
+      const baseRadius = Math.max(ripple.radiusFraction * width, 1);
+      const radius = reducedMotion
+        ? baseRadius
+        : ripple.distancePixels;
+      const halfWidth = halfWidthFor(ripple);
+      const push = reducedMotion ? 0 : 650 * frameDelta;
+      const brightness = reducedMotion
+        ? 0.42
+        : 1 - Math.exp(-22 * frameDelta);
+
+      this.strokeData.set(
+        [
+          ripple.xFraction * aspect,
+          ripple.yFraction,
+          radius / height,
+          halfWidth / height,
+          push / height,
+          brightness,
+          0,
+          2,
+        ],
+        offset,
+      );
+    });
     this.strokeTexture.needsUpdate = true;
 
     const steps = pointerLightSettings.backdropPressureIterations;
-    const stepDelta =
-      Math.min(
-        deltaSeconds,
-        pointerLightSettings.backdropMaximumFrameDeltaSeconds,
-      ) / steps;
+    const stepDelta = frameDelta / steps;
     const inputRadius =
       pointerLightSettings.backdropInputRadiusPixels / height;
 
     for (let step = 0; step < steps; step += 1) {
-      const strokeCount = step === 0 ? batch.length : 0;
+      const strokeCount = step === 0 ? batch.length + rippleBatch.length : 0;
       const reduced = reducedMotion ? 1 : 0;
 
       this.setUniforms(this.variables.velocity, {
@@ -536,6 +682,7 @@ export class AsciiFluidSimulation {
   }
 
   clear() {
+    this.activeRipples = [];
     for (const variable of Object.values(this.variables)) {
       for (const target of variable.renderTargets) {
         this.gpu.renderTexture(this.zeroTexture, target);
