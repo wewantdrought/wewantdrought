@@ -120,4 +120,49 @@
   }
 }
 
+@media (width > 1100px) {
+  .about-block {
+    --about-heading-size: calc(17 * var(--hero-px));
+    --about-tracking: calc(-0.48 * var(--hero-px));
+
+    top: calc(231 * var(--hero-px));
+    width: calc(340 * var(--hero-px));
+  }
+
+  .about-heading {
+    line-height: calc(21 * var(--hero-px));
+  }
+
+  .about-status {
+    gap: calc(5 * var(--hero-px));
+    margin-top: calc(8 * var(--hero-px));
+    font-size: calc(12 * var(--hero-px));
+    line-height: calc(14 * var(--hero-px));
+  }
+
+  .about-links {
+    margin-top: calc(10 * var(--hero-px));
+  }
+
+  .about-link {
+    grid-template-columns:
+      calc(6.6 * var(--about-heading-size) + 11 * var(--about-tracking))
+      minmax(0, 1fr)
+      calc(16 * var(--hero-px));
+    width: calc(
+      var(--hero-home-guide-x) - var(--hero-about-left) + 24.5 * var(--hero-px)
+    );
+    min-height: calc(26 * var(--hero-px));
+    margin-inline-start: calc(-4 * var(--hero-px));
+    padding-inline: calc(4 * var(--hero-px)) calc(4.5 * var(--hero-px));
+    font-size: calc(12 * var(--hero-px));
+    line-height: calc(14 * var(--hero-px));
+  }
+
+  .about-arrow {
+    width: calc(16 * var(--hero-px));
+    height: calc(16 * var(--hero-px));
+  }
+}
+
 

@@ -55,6 +55,14 @@ export default function App() {
     }
 
     const updateCuePosition = () => {
+      if (window.matchMedia('(width > 1100px)').matches) {
+        cue.style.position = '';
+        cue.style.left = '';
+        cue.style.top = '';
+        cue.style.margin = '';
+        return;
+      }
+
       if (window.innerWidth <= 700) {
         cue.style.position = 'relative';
         cue.style.left = '';
@@ -81,7 +89,7 @@ export default function App() {
       let top =
         vinylBounds.top -
         heroBounds.top +
-        vinylBounds.height * (window.innerWidth <= 1100 ? 0.84 : 0.6325);
+        vinylBounds.height * 0.84;
 
       const overlapsLocation =
         left < locationRight &&
@@ -452,81 +460,87 @@ export default function App() {
         prefersReducedMotion={prefersReducedMotion}
       />
 
-      <svg
-        className="hero-diagonal"
-        viewBox="0 0 1440 900"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <path
-          d="M202 80L1389.6 900"
-          fill="none"
-          stroke="#212121"
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-
-      <div className="hero-guides" aria-hidden="true">
-        {boundaries.map((position) => (
-          <span
-            key={position}
-            style={{
-              left:
-                position === homeSectionGuide
-                  ? 'var(--hero-home-guide-x)'
-                  : `${(position / 1440) * 100}%`,
-            }}
+      <div className="hero-composition">
+        <svg
+          className="hero-diagonal"
+          viewBox="0 0 1440 900"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M202 80L1389.6 900"
+            fill="none"
+            stroke="#212121"
+            vectorEffect="non-scaling-stroke"
           />
-        ))}
-      </div>
-
-      <img
-        className="hero-title"
-        src="/assets/rain-li-title.svg"
-        width="1440"
-        height="138"
-        alt=""
-        aria-hidden="true"
-      />
-
-      <div className="hero-progress">
-        <ul className="hero-sections" aria-label="Website sections">
-          {sections.map(({ label, position }) => (
-            <li
-              key={label}
-              style={{ left: `${(position / 1440) * 100}%` }}
-            >
-              {label}
-            </li>
-          ))}
-        </ul>
-
-        <div className="hero-track" aria-hidden="true">
-          <span className="hero-position" />
-        </div>
-      </div>
-
-      <AboutBlock />
-      <VinylScene
-        containerRef={vinylRef}
-        pointerLight={pointerLight}
-        prefersReducedMotion={prefersReducedMotion}
-        onActivate={handleVinylActivated}
-      />
-
-      <div
-        ref={vinylCueRef}
-        className={
-          vinylCueVisible
-            ? 'hero-vinyl-cue'
-            : 'hero-vinyl-cue is-dismissed'
-        }
-        aria-hidden="true"
-      >
-        <span>CLICK ME</span>
-        <svg viewBox="0 0 39 11" aria-hidden="true" focusable="false">
-          <path d="M38.5 0.5V5.5H1.5M1.5 5.5 7 1M1.5 5.5 7 10" />
         </svg>
+
+        <div className="hero-guides" aria-hidden="true">
+          {boundaries.map((position) => (
+            <span
+              key={position}
+              style={{
+                left:
+                  position === homeSectionGuide
+                    ? 'var(--hero-home-guide-x)'
+                    : `${(position / 1440) * 100}%`,
+              }}
+            />
+          ))}
+        </div>
+
+        <img
+          className="hero-title"
+          src="/assets/rain-li-title.svg"
+          width="1440"
+          height="138"
+          alt=""
+          aria-hidden="true"
+        />
+
+        <div className="hero-progress">
+          <ul className="hero-sections" aria-label="Website sections">
+            {sections.map(({ label, position }) => (
+              <li
+                key={label}
+                style={{ left: `${(position / 1440) * 100}%` }}
+              >
+                {label}
+              </li>
+            ))}
+          </ul>
+
+          <div className="hero-track" aria-hidden="true">
+            <span className="hero-position" />
+          </div>
+        </div>
+
+        <AboutBlock />
+        <VinylScene
+          containerRef={vinylRef}
+          pointerLight={pointerLight}
+          prefersReducedMotion={prefersReducedMotion}
+          onActivate={handleVinylActivated}
+        />
+
+        <div
+          ref={vinylCueRef}
+          className={
+            vinylCueVisible
+              ? 'hero-vinyl-cue'
+              : 'hero-vinyl-cue is-dismissed'
+          }
+          aria-hidden="true"
+        >
+          <span>CLICK ME</span>
+          <svg viewBox="0 0 39 11" aria-hidden="true" focusable="false">
+            <path d="M38.5 0.5V5.5H1.5M1.5 5.5 7 1M1.5 5.5 7 10" />
+          </svg>
+        </div>
+
+        <p ref={heroLocationRef} className="hero-location">
+          Vancouver, CA / 2026
+        </p>
       </div>
 
       <div
@@ -545,10 +559,6 @@ export default function App() {
           />
         </svg>
       </div>
-
-      <p ref={heroLocationRef} className="hero-location">
-        Vancouver, CA / 2026
-      </p>
     </main>
   );
 }
