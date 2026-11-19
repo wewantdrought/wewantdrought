@@ -25,6 +25,7 @@ export default function App() {
     radius: 0,
     strength: 0,
     invalidate: null,
+    invalidateBackdrop: null,
   });
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
@@ -60,6 +61,7 @@ export default function App() {
       pointerLight.current.clientY = smoothY;
       pointerLight.current.strength = strength;
       pointerLight.current.invalidate?.();
+      pointerLight.current.invalidateBackdrop?.();
     };
 
     const animate = (time: number) => {
@@ -215,7 +217,7 @@ export default function App() {
     <main ref={heroRef} className="hero">
       <h1 className="visually-hidden">Rain Li</h1>
 
-      <AsciiBackdrop />
+      <AsciiBackdrop pointerLight={pointerLight} />
 
       <svg
         className="hero-diagonal"

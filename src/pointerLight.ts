@@ -4,6 +4,7 @@ export type PointerLightState = {
   radius: number;
   strength: number;
   invalidate: (() => void) | null;
+  invalidateBackdrop: (() => void) | null;
 };
 
 export const pointerLightSettings = {
@@ -12,4 +13,5 @@ export const pointerLightSettings = {
   smoothingSeconds: 0.1,
   fadeInSeconds: 0.15,
   fadeOutSeconds: 0.2,
+  backdropRadiusScale: 0.66,
 };

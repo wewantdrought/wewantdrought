@@ -46,6 +46,16 @@ body {
   pointer-events: none;
 }
 
+.hero-ascii-activation {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .hero-guides {
   position: absolute;
   z-index: -1;
