@@ -11,6 +11,10 @@ const rippleProfileShader = `
       return 1.0 - smoothstep(0.0, radius, distanceToOrigin);
     }
 
+    if (halfWidth <= 0.0) {
+      return 0.0;
+    }
+
     float distanceFromBand = abs(distanceToOrigin - radius);
     return 1.0 - smoothstep(0.0, halfWidth, distanceFromBand);
   }
@@ -324,7 +328,7 @@ const cellDisplayFragmentShader = `
 
 type FluidVariable = ReturnType<GPUComputationRenderer['addVariable']>;
 
-const rippleSpeedPixelsPerSecond = 480;
+const rippleSpeedPixelsPerSecond = 552;
 const maximumActiveRipples =
   64 - pointerLightSettings.backdropMaximumSegmentsPerFrame;
 
@@ -539,7 +543,7 @@ export class AsciiFluidSimulation {
         xFraction: (ripple.clientX - bounds.left) / width,
         yFraction: 1 - (ripple.clientY - bounds.top) / height,
         radiusFraction: ripple.radiusPixels / width,
-        distancePixels: reducedMotion ? 0 : ripple.radiusPixels * 0.72,
+        distancePixels: reducedMotion ? 0 : ripple.radiusPixels * 0.5,
       }));
 
     const viewport = document.documentElement;
@@ -611,7 +615,9 @@ export class AsciiFluidSimulation {
       const radius = reducedMotion
         ? baseRadius
         : ripple.distancePixels;
-      const halfWidth = halfWidthFor(ripple);
+      const halfWidth = reducedMotion
+        ? halfWidthFor(ripple)
+        : Math.min(halfWidthFor(ripple), radius * 0.5);
       const push = reducedMotion ? 0 : 650 * frameDelta;
       const brightness = reducedMotion
         ? 0.42
