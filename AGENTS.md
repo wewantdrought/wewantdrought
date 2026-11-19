@@ -25,7 +25,11 @@ Read `docs/project-charter-draft.md`, especially Section 13, before acting. Read
 
 ## Current checkpoint
 
-Implementation is active for the bounded scaffold-connection milestone. The guided, read-only walkthrough is complete, and the existing scaffold has been retained for this step. The app and stylesheet are minimal connection placeholders; the hero is a separate milestone and is not included. Unverified drafts in `/tmp/wewantdrought-release` remain unaccepted and must not be integrated automatically. No release actions are authorized.
+Work is at Rain's visual review checkpoint for the active `experiment/ascii-hero` branch. The reviewed ASCII hero refinement has been applied: the vinyl body and outer grooves are larger, ASCII character sampling is denser, and a continuous glyph pattern covers the hero background.
+
+The existing typecheck and build checks passed. The build reported a graphics-bundle size warning. Browser access was unavailable to Codex, so no comparison screenshots, desktop or phone visual verification, or runtime performance observation were completed. The visual result remains unaccepted pending Rain's independent review.
+
+The current worktree has modifications in `src/App.tsx`, `src/VinylScene.tsx`, and `src/style.css`, plus untracked `src/AsciiBackdrop.tsx` and `src/AsciiVinylPass.tsx`. Preserve this work. Unverified drafts in `/tmp/wewantdrought-release` remain unaccepted and must not be integrated automatically. No release actions are authorized.
 
 ---
 
@@ -57,6 +61,20 @@ Clearly distinguish planning, implementation, verification, and release.
 Before transitioning from planning to implementation, state: “Planning for [bounded milestone] is complete. I propose beginning implementation of [specific scope].” Identify Rain’s work, the agent’s proposed work, the review criteria, and the stopping point. Wait for explicit approval.
 
 Approval of a phase transition does not waive line-by-line review before changes. If implementation raises a new design or architectural decision, announce a return to planning for that decision.
+
+### Minimum Technical Review
+
+Before implementation approval, Codex must explain three things in plain English:
+
+1. **Architecture:** What files will change, how will the feature work, and how do the affected components interact?
+2. **Risks:** What could break, what alternatives were considered, and why was the proposed approach selected?
+3. **Verification:** How will we determine whether the implementation works correctly?
+
+After implementation, Codex must run all applicable available checks, report the results, and explain any failures or checks it could not run.
+
+The user will independently test the feature, particularly on desktop and mobile.
+
+**Guiding principle:** The user should understand the proposed behavior, architectural decisions, risks, and verification strategy without needing to understand every line of TypeScript, JavaScript, React, or Three.js.
 
 At each checkpoint, state the current phase, completed work, unresolved questions, and next proposed action. Never silently move from discussion into implementation.
 

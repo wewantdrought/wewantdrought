@@ -220,6 +220,20 @@ Approval of a Figma design does not authorize code changes. Code implementation 
 3. **Specify (ChatGPT → Codex):** Prepare a detailed, actionable implementation brief that points to relevant Markdown documentation and states approved choices, acceptance criteria, and verification expectations.
 4. **Implement (Codex):** Inspect the repository and its conventions, implement the approved scope, verify the changes as requested and appropriate, and prepare a structured handoff report.
 
+### Minimum Technical Review
+
+Before implementation approval, Codex must explain three things in plain English:
+
+1. **Architecture:** What files will change, how will the feature work, and how do the affected components interact?
+2. **Risks:** What could break, what alternatives were considered, and why was the proposed approach selected?
+3. **Verification:** How will we determine whether the implementation works correctly?
+
+After implementation, Codex must run all applicable available checks, report the results, and explain any failures or checks it could not run.
+
+The user will independently test the feature, particularly on desktop and mobile.
+
+**Guiding principle:** The user should understand the proposed behavior, architectural decisions, risks, and verification strategy without needing to understand every line of TypeScript, JavaScript, React, or Three.js.
+
 ### Review and refine
 
 5. **Review (Rain):** Inspect and try the implementation. Note visual mismatches, broken or missing behavior, and anything that does not match the intended result.

@@ -1,6 +1,7 @@
 import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
+import AsciiVinylPass from './AsciiVinylPass';
 
 const grooveVertexShader = `
   varying vec3 localPosition;
@@ -86,7 +87,7 @@ function Vinyl({
 
   const recordShape = useMemo(() => {
     const shape = new THREE.Shape();
-    shape.absarc(0, 0, 1, 0, Math.PI * 2, false);
+    shape.absarc(0, 0, 1.27, 0, Math.PI * 2, false);
 
     const spindleOpening = new THREE.Path();
     spindleOpening.absarc(0, 0, 0.055, 0, Math.PI * 2, true);
@@ -248,7 +249,7 @@ function Vinyl({
               </mesh>
 
               <mesh position={[0, 0, faceZ]}>
-                <ringGeometry args={[0.075, 0.985, 128]} />
+                <ringGeometry args={[0.075, 1.255, 128]} />
                 <shaderMaterial
                   vertexShader={grooveVertexShader}
                   fragmentShader={grooveFragmentShader}
@@ -267,7 +268,7 @@ function Vinyl({
           </group>
 
           <mesh position={[0, 0, reflectionZ]}>
-            <ringGeometry args={[0.075, 0.985, 128]} />
+            <ringGeometry args={[0.075, 1.255, 128]} />
             <shaderMaterial
               vertexShader={grooveVertexShader}
               fragmentShader={reflectionFragmentShader}
@@ -282,6 +283,11 @@ function Vinyl({
 }
 
 export default function VinylScene() {
+  const showNormalVinyl =
+    import.meta.env.DEV &&
+    new URLSearchParams(window.location.search).get('vinyl') ===
+      'normal';
+
   const containerRef = useRef<HTMLDivElement>(null);
   const [isInViewport, setIsInViewport] = useState(false);
   const [isPageVisible, setIsPageVisible] = useState(true);
@@ -416,6 +422,7 @@ export default function VinylScene() {
           pressTarget={pressTarget}
           pressTargetChange={setPressTarget}
         />
+        {!showNormalVinyl && <AsciiVinylPass />}
       </Canvas>
 
       <button

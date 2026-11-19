@@ -36,6 +36,17 @@ body {
   background: #000;
 }
 
+.hero-ascii-backdrop {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0.23;
+  pointer-events: none;
+}
+
 .hero-guides {
   position: absolute;
   z-index: -1;
@@ -95,8 +106,8 @@ body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 58%;
-  height: 48%;
+  width: 74%;
+  height: 61%;
   padding: 0;
   transform: translate(-50%, -50%);
   border: 2px solid transparent;

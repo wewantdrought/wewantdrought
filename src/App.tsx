@@ -1,3 +1,4 @@
+import AsciiBackdrop from './AsciiBackdrop';
 import AboutBlock from './AboutBlock';
 import VinylScene from './VinylScene';
 
@@ -16,6 +17,8 @@ export default function App() {
   return (
     <main className="hero">
       <h1 className="visually-hidden">Rain Li</h1>
+
+      <AsciiBackdrop />
 
       <svg
         className="hero-diagonal"
