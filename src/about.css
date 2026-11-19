@@ -7,6 +7,8 @@
 }
 
 .about-block {
+  --about-heading-size: 17px;
+  --about-tracking: -0.03rem;
   position: absolute;
   z-index: 1;
   top: calc(100vw * 231 / 1440);
@@ -14,12 +16,12 @@
   width: 340px;
   color: #fff;
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--about-tracking);
 }
 
 .about-heading {
   margin: 0;
-  font-size: 17px;
+  font-size: var(--about-heading-size);
   font-weight: 400;
   line-height: 21px;
   white-space: nowrap;
@@ -44,17 +46,26 @@
 
 .about-link {
   display: grid;
-  grid-template-columns: 70px minmax(0, 1fr) 16px;
+  grid-template-columns:
+    calc(6.6 * var(--about-heading-size) + 11 * var(--about-tracking))
+    minmax(0, 1fr)
+    16px;
   align-items: center;
   width: calc(
-    var(--hero-home-guide-x) - var(--hero-about-left) + 16px
+    var(--hero-home-guide-x) - var(--hero-about-left) + 16px + 4px + 4.5px
   );
   min-height: 26px;
+  margin-inline-start: -4px;
+  padding-inline: 4px 4.5px;
   border-bottom: 1px solid #2e2e2e;
   color: inherit;
   font-size: 12px;
   line-height: 14px;
   text-decoration: none;
+}
+
+.about-link > span:nth-child(2) {
+  overflow-wrap: anywhere;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -81,6 +92,7 @@
 .about-arrow {
   width: 16px;
   height: 16px;
+  overflow: visible;
   fill: none;
   stroke: currentColor;
   stroke-width: 1;
@@ -98,7 +110,7 @@
   }
 
   .about-link {
-    width: 100%;
+    width: calc(100% + 4px);
   }
 }
 
@@ -107,3 +119,5 @@
     min-height: 44px;
   }
 }
+
+
